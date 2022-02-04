@@ -58,7 +58,7 @@ const STRIDE = 20000;
     meta.last_sth = sth;
 
     const certCount = fs.readdirSync(logPath).length;
-    assert.equal(certCount, meta.idx);
+    assert((certCount >= meta.idx) && (certCount <= (meta.idx + STRIDE)), "current total certs must be meta.idx or meta.idx plus some certs within the current stride");
 
     // fetch certs
 

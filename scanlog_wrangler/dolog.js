@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-const { spawnSync } = require("child_process");
+const { spawn } = require("child_process");
 const fs = require("fs");
 const https = require("https");
 const assert = require("assert").strict;
@@ -65,30 +65,38 @@ const STRIDE = 20000;
     console.log("Initialized, starting fetching");
     while (meta.idx < sth.tree_size) {
         const start = Date.now();
-        spawnSync(
-            scanlogPath,
-            [
-                "-log_uri",
-                logUrl,
-                
-                "-dump_dir",
-                logPath,
+        await new Promise((resolve, reject) => {
+            const cmd = spawn(
+                scanlogPath,
+                [
+                    "-log_uri",
+                    logUrl,
+                    
+                    "-dump_dir",
+                    logPath,
 
-                "-start_index", // inclusive
-                meta.idx.toString(), // meta.idx points to next certificate to fetch
+                    "-start_index", // inclusive
+                    meta.idx.toString(), // meta.idx points to next certificate to fetch
 
-                "-end_index", // exclusive
-                (meta.idx + STRIDE).toString(),
+                    "-end_index", // exclusive
+                    (meta.idx + STRIDE).toString(),
 
-                "-batch_size",
-                "100",
+                    "-batch_size",
+                    "100",
 
-                "-parallel_fetch",
-                "4",
+                    "-parallel_fetch",
+                    "4",
 
-                "-dump_full_chain=false",
-            ],
-        );
+                    "-dump_full_chain=false",
+                ],
+            );
+            cmd.stdout.pipe(process.stdout);
+            cmd.stderr.pipe(process.stderr);
+            cmd.on("close", code => {
+                if (code === 0) resolve();
+                reject(`Bad exit code ${code}`);
+            });
+        });
         const end = Date.now();
         const duration = end - start;
         const certCount = fs.readdirSync(logPath).length;

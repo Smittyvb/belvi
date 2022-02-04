@@ -65,6 +65,7 @@ const STRIDE = 20000;
     console.log("Initialized, starting fetching");
     while (meta.idx < sth.tree_size) {
         const start = Date.now();
+        console.log(`Fetching ${meta.idx}-${meta.idx + STRIDE}`);
         await new Promise((resolve, reject) => {
             const cmd = spawn(
                 scanlogPath,
@@ -82,7 +83,7 @@ const STRIDE = 20000;
                     (meta.idx + STRIDE).toString(),
 
                     "-batch_size",
-                    "100",
+                    "1000",
 
                     "-parallel_fetch",
                     "4",

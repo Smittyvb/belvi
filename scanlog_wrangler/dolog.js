@@ -102,6 +102,7 @@ const STRIDE = 20000;
         const certCount = fs.readdirSync(logPath).length;
         assert.equal(certCount, meta.idx + STRIDE);    
         meta.idx += STRIDE;
+        metaChanged();
         console.log(`Fetched ${STRIDE} certs in ${(duration / 1000).toFixed(1)}s, ${(duration / STRIDE).toFixed(1)}ms per cert`);
     }
     console.log("Caught up to CT log");

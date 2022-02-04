@@ -8,5 +8,5 @@ If this is used to manage a significant number of certificates, you may wish to 
 ## Usage
 Arguments: `scanlog` path, log base URL, certificate base path, log name
 ```sh
-node dolog.js ~/certificate-transparency-go/scanlog "https://ct.cloudflare.com/logs/nimbus2023" /tmp/certs nimbus2023
+node dolog.js ~/certificate-transparency-go/scanlog "https://ct.cloudflare.com/logs/nimbus2023" /tmp/certs nimbus2023 2> /dev/null
 ```

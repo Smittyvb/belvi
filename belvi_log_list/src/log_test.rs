@@ -21,7 +21,8 @@ fn argon2021() {
             }
         }
     "#;
-    assert_eq!(serde_json::from_str::<Log>(data).unwrap(), Log {
+    let log = serde_json::from_str::<Log>(data).unwrap();
+    assert_eq!(log, Log {
         description: "Google 'Argon2021' log".to_string(),
         log_id: "9lyUL9F3MCIUVBgIMJRWjuNNExkzv98MLyALzE7xZOM=".to_string(),
         key: "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETeBmZOrzZKo4xYktx9gI2chEce3cw/tbr5xkoQlmhB18aKfsxD+MnILgGNl0FOm0eYGilFVi85wLRIOhK8lxKw==".to_string(),
@@ -35,6 +36,7 @@ fn argon2021() {
             end_exclusive: "2022-01-01T00:00:00Z".to_string(),
         })
     });
+    assert_eq!(log.get_sth_url(), "https://ct.googleapis.com/logs/argon2021/ct/v1/get-sth".to_string());
 }
 
 #[test]

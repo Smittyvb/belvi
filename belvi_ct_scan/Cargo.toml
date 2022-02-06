@@ -1,0 +1,10 @@
+[package]
+name = "belvi_ct_scan"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.11.9", features = ["brotli", "gzip", "json"] }
+tokio = { version = "1.16.1", features = ["full"] }
+serde_json = "1.0.78"
+serde = { version = "1.0.136", features = ["derive"]}

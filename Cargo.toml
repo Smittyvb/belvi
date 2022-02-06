@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+[workspace]
+members = [
+    "belvi_ct_scan",
+]

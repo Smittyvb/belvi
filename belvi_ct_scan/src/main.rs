@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
+use serde::{Deserialize, Serialize};
 use std::cmp;
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct LogSth {
@@ -32,5 +32,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:#?}", resp);
     Ok(())
 }
-
-

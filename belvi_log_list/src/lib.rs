@@ -7,6 +7,8 @@ mod log_test;
 #[cfg(test)]
 mod log_list_test;
 
+type TreeSize = u64;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogList {
     version: String,
@@ -56,7 +58,7 @@ pub struct TemporalInterval {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeHead {
     sha256_root_hash: String,
-    tree_size: u64,
+    tree_size: TreeSize,
 }
 
 macro_rules! api_endpoint {
@@ -68,12 +70,31 @@ macro_rules! api_endpoint {
 }
 
 impl Log {
+    // No URL parameters
     api_endpoint!("add-chain", add_chain_url);
     api_endpoint!("add-pre-chain", add_pre_chain_url);
     api_endpoint!("get-sth", get_sth_url);
-    api_endpoint!("get-sth-consistency", get_sth_consistency_url);
-    api_endpoint!("get-proof-by-hash", get_proof_by_hash_url);
-    api_endpoint!("get-entries", get_entries_url);
     api_endpoint!("get-roots", get_roots_url);
-    api_endpoint!("get-entry-and-proof", get_entry_and_proof_url);
+
+    pub fn get_sth_consistency_url(&self, first: TreeSize, second: TreeSize) -> String {
+        format!(
+            "{}ct/v1/get-sth-consistency?first={}&second={}",
+            self.url, first, second
+        )
+    }
+    pub fn get_entries_url(&self, start: TreeSize, end: u64) -> String {
+        format!("{}ct/v1/get-entries?start={}&end={}", self.url, start, end)
+    }
+    pub fn get_proof_by_hash_url(&self, hash: String, tree_size: TreeSize) -> String {
+        format!(
+            "{}ct/v1/get-proof-by-hash?hash={}&tree_size={}",
+            self.url, hash, tree_size
+        )
+    }
+    pub fn get_entry_and_proof_url(&self, leaf_index: u32, tree_size: TreeSize) -> String {
+        format!(
+            "{}ct/v1/get-entry-and-proof?leaf_index={}&tree_size={}",
+            self.url, leaf_index, tree_size
+        )
+    }
 }

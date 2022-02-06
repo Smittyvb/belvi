@@ -36,7 +36,15 @@ fn argon2021() {
             end_exclusive: "2022-01-01T00:00:00Z".to_string(),
         })
     });
-    assert_eq!(log.get_sth_url(), "https://ct.googleapis.com/logs/argon2021/ct/v1/get-sth".to_string());
+    assert_eq!(
+        log.get_sth_url(),
+        "https://ct.googleapis.com/logs/argon2021/ct/v1/get-sth".to_string()
+    );
+    assert_eq!(
+        log.get_entries_url(1337, 31337),
+        "https://ct.googleapis.com/logs/argon2021/ct/v1/get-entries?start=1337&end=31337"
+            .to_string()
+    );
 }
 
 #[test]

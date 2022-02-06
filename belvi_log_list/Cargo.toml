@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "belvi_log_list"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "1.0.78"
+serde = { version = "1.0.136", features = ["derive"]}

@@ -60,6 +60,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "belvi_log_list"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

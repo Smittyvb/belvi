@@ -4,6 +4,23 @@ use serde::{Deserialize, Serialize};
 #[cfg(test)]
 mod log_test;
 
+#[cfg(test)]
+mod log_list_test;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct LogList {
+    version: String,
+    log_list_timestamp: String,
+    operators: Vec<LogListOperator>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct LogListOperator {
+    name: String,
+    email: Vec<String>,
+    logs: Vec<Log>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Log {
     description: String,

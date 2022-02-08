@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::cmp;
 
+use belvi_log_list::{Log, LogList};
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct LogSth {
     tree_size: u64,
@@ -25,7 +27,9 @@ impl Ord for LogSth {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let resp = reqwest::get("https://ct.googleapis.com/logs/argon2021/ct/v1/get-sth")
+    let google_log = LogList::google();
+    let argon2021 = &google_log.operators[0].logs[0];
+    let resp = reqwest::get(argon2021.get_sth_url())
         .await?
         .json::<LogSth>()
         .await?;

@@ -11,31 +11,31 @@ type TreeSize = u64;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogList {
-    version: String,
-    log_list_timestamp: String,
-    operators: Vec<LogListOperator>,
+    pub version: String,
+    pub log_list_timestamp: String,
+    pub operators: Vec<LogListOperator>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LogListOperator {
-    name: String,
-    email: Vec<String>,
-    logs: Vec<Log>,
+    pub name: String,
+    pub email: Vec<String>,
+    pub logs: Vec<Log>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Log {
-    description: String,
-    log_id: String,
-    key: String,
-    url: String,
-    mmd: u32,
-    state: LogState,
-    temporal_interval: Option<TemporalInterval>,
+    pub description: String,
+    pub log_id: String,
+    pub key: String,
+    pub url: String,
+    pub mmd: u32,
+    pub state: LogState,
+    pub temporal_interval: Option<TemporalInterval>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum LogState {
+pub enum LogState {
     #[serde(rename = "usable")]
     Usable { timestamp: String },
 
@@ -51,14 +51,14 @@ enum LogState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TemporalInterval {
-    start_inclusive: String,
-    end_exclusive: String,
+    pub start_inclusive: String,
+    pub end_exclusive: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeHead {
-    sha256_root_hash: String,
-    tree_size: TreeSize,
+    pub sha256_root_hash: String,
+    pub tree_size: TreeSize,
 }
 
 macro_rules! api_endpoint {
@@ -96,5 +96,11 @@ impl Log {
             "{}ct/v1/get-entry-and-proof?leaf_index={}&tree_size={}",
             self.url, leaf_index, tree_size
         )
+    }
+}
+
+impl LogList {
+    pub fn google() -> Self {
+        serde_json::from_str(include_str!("../log_list.json")).unwrap()
     }
 }

@@ -25,14 +25,44 @@ impl Ord for LogSth {
     }
 }
 
+struct Fetcher {
+    client: reqwest::Client,
+}
+
+impl Fetcher {
+    fn new() -> Self {
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            "From",
+            reqwest::header::HeaderValue::from_static("belvi@smitop.com"),
+        );
+        Self {
+            client: reqwest::Client::builder()
+                .user_agent("belvi/0.1 (belvi@smitop.com)")
+                .default_headers(headers)
+                .brotli(true)
+                .gzip(true)
+                .https_only(true)
+                .build()
+                .unwrap(),
+        }
+    }
+    async fn fetch_sth(&self, log: &Log) -> Result<LogSth, reqwest::Error> {
+        self.client
+            .get(log.get_sth_url())
+            .send()
+            .await?
+            .json()
+            .await
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let google_log = LogList::google();
     let argon2021 = &google_log.operators[0].logs[0];
-    let resp = reqwest::get(argon2021.get_sth_url())
-        .await?
-        .json::<LogSth>()
-        .await?;
+    let fetcher = Fetcher::new();
+    let resp = fetcher.fetch_sth(argon2021).await?;
     println!("{:#?}", resp);
     Ok(())
 }

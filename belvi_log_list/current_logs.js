@@ -47,7 +47,7 @@ console.log(logs.length, curLogs.length, curLogs.map(l => l.description));
             res.on("data", chunk => body += chunk);
             res.on("end", () => {
                 const data = JSON.parse(body);
-                console.log(log.description, data.tree_size);
+                console.log(log.description, data.tree_size.toLocaleString());
                 total += data.tree_size;
                 resolve();
             });

@@ -42,7 +42,7 @@ pub enum CTParseError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct GetEntriesItem {
+pub struct GetEntriesItem {
     pub leaf_input: MerkleTreeLeaf,
     pub extra_data: Vec<u8>,
 }

@@ -1,29 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-
-use serde::{Deserialize, Serialize};
-use std::cmp;
+pub mod log_data;
 
 use belvi_log_list::{Log, LogList};
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct LogSth {
-    tree_size: u64,
-    timestamp: u64,
-    sha256_root_hash: String,
-    tree_head_signature: String,
-}
-
-impl PartialOrd for LogSth {
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.tree_size.partial_cmp(&other.tree_size)
-    }
-}
-
-impl Ord for LogSth {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.tree_size.cmp(&other.tree_size)
-    }
-}
+use log_data::LogSth;
 
 struct Fetcher {
     client: reqwest::Client,

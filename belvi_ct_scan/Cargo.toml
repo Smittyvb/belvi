@@ -10,3 +10,4 @@ tokio = { version = "1.16.1", features = ["full"] }
 serde_json = "1.0.78"
 serde = { version = "1.0.136", features = ["derive"]}
 belvi_log_list = { path = "../belvi_log_list" }
+base64 = "0.13.0"

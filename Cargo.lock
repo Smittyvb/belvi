@@ -53,6 +53,7 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 name = "belvi_ct_scan"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "belvi_log_list",
  "reqwest",
  "serde",

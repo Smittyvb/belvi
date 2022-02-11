@@ -1,16 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
-use super::{html_escape::HtmlEscapable, Render};
 use bcder::oid::Oid;
+use std::collections::HashMap;
 
-impl<T> Render for Oid<T>
-where
-    T: AsRef<[u8]>,
-{
+mod parse;
+
+use super::{html_escape::HtmlEscapable, Render};
+
+lazy_static::lazy_static! {
+    static ref COMMON_OIDS: HashMap<Oid<bytes::Bytes>, String> = {
+        let mut hm = HashMap::new();
+        let oid_data = include_str!("oid/oids.txt");
+        for line in oid_data.lines() {
+            if line.is_empty() || line.starts_with("#") { continue; }
+            let mut parts = line.split("=");
+            hm.insert(parse::parse_oid(parts.next().unwrap()), parts.next().unwrap().to_string());
+        }
+        hm
+    };
+}
+
+impl Render for Oid<bytes::Bytes> {
     fn render(&self) -> String {
-        format!(
-            r#"<span class="bvcert-oid" data-oid="{oid}">{oid}</span>"#,
-            oid = self.html_escape()
-        )
+        if let Some(val) = COMMON_OIDS.get(self) {
+            format!(
+                r#"<span class="bvcert-oid" data-oid="{oid}">{name}</span>"#,
+                oid = self.html_escape(),
+                name = val,
+            )
+        } else {
+            format!(
+                r#"<span class="bvcert-oid" data-oid="{oid}">{oid}</span>"#,
+                oid = self.html_escape()
+            )
+        }
     }
 }
 
@@ -20,7 +42,7 @@ mod test {
 
     #[test]
     fn unknown_oid() {
-        let oid = Oid([192, 200, 50, 30]);
+        let oid = Oid(bytes::Bytes::from(&[192, 200, 50, 30][..]));
         assert_eq!(
             Render::render(&oid),
             "<span class=\"bvcert-oid\" data-oid=\"2.1057762.30\">2.1057762.30</span>".to_string()

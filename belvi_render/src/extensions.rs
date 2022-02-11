@@ -13,7 +13,7 @@ impl Render for Extensions {
                 } else {
                     "noncritical"
                 },
-                ext.id
+                ext.id.render()
             );
             (key, ext.render())
         });

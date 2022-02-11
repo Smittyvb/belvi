@@ -7,6 +7,7 @@ use crate::html_escape::HtmlEscapable;
 
 mod html_escape;
 mod oid;
+mod strings;
 mod time;
 
 /// Render a key-value table. The key is HTML escaped, while the value should already be escaped.

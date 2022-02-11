@@ -3,19 +3,17 @@
 
 use x509_certificate::{certificate::X509Certificate, rfc5280::Certificate};
 
-use crate::html_escape::HtmlEscapable;
-
+mod extensions;
 mod html_escape;
 mod oid;
 mod strings;
 mod time;
 
-/// Render a key-value table. The key is HTML escaped, while the value should already be escaped.
-fn render_kv_table(rows: Vec<(String, String)>) -> String {
+/// Render a key-value table.
+fn render_kv_table(rows: impl Iterator<Item = (String, String)>) -> String {
     format!(
         r#"<table class="bvcert-kv-table">{}</table>"#,
-        rows.into_iter()
-            .map(|(k, v)| format!("<tr><th>{}</th><td>{}</td></tr>", k.html_escape(), v))
+        rows.map(|(k, v)| format!("<tr><th>{}</th><td>{}</td></tr>", k, v))
             .fold(String::new(), |a, b| a + &b)
     )
 }
@@ -54,6 +52,6 @@ impl Render for x509_certificate::rfc5280::AlgorithmIdentifier {
             };
             table.push(("Algorithm identifier".to_string(), val));
         }
-        render_kv_table(table)
+        render_kv_table(table.into_iter())
     }
 }

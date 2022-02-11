@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use bcder::OctetString;
 
 use super::{html_escape::HtmlEscapable, Render};

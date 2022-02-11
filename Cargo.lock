@@ -85,6 +85,7 @@ name = "belvi_render"
 version = "0.1.0"
 dependencies = [
  "bcder",
+ "chrono",
  "x509-certificate",
 ]
 

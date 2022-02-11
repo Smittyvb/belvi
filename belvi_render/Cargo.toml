@@ -7,3 +7,4 @@ edition = "2021"
 [dependencies]
 x509-certificate = "0.6.0"
 bcder = "0.6.1"
+chrono = "0.4.19"

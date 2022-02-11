@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use std::fmt;
 
 pub fn entity_escape_char(khar: &char) -> String {

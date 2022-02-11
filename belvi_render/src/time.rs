@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use super::{html_escape::HtmlEscapable, Render};
 
 impl Render for x509_certificate::asn1time::UtcTime {

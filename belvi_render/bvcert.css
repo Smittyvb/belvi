@@ -8,6 +8,12 @@ body {
     background-color: rgb(190, 190, 190);
 }
 
+.bvcert-kv-table th > .bvcert-kv-th-text {
+    position: sticky;
+    top: 1rem;
+    bottom: 1rem;
+}
+
 .bvcert-kv-table tr > th, .bvcert-kv-table tr > td {
     border-bottom: 2px solid rgb(128, 128, 128);
     padding: 4px;

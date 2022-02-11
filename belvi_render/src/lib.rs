@@ -14,8 +14,11 @@ mod time;
 fn render_kv_table(rows: impl Iterator<Item = (String, String)>) -> String {
     format!(
         r#"<table class="bvcert-kv-table">{}</table>"#,
-        rows.map(|(k, v)| format!("<tr><th>{}</th><td>{}</td></tr>", k, v))
-            .fold(String::new(), |a, b| a + &b)
+        rows.map(|(k, v)| format!(
+            r#"<tr><th><span class="bvcert-kv-th-text">{}</span></th><td>{}</td></tr>"#,
+            k, v
+        ))
+        .fold(String::new(), |a, b| a + &b)
     )
 }
 

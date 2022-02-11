@@ -31,7 +31,65 @@ impl Render for X509Certificate {
 
 impl Render for Certificate {
     fn render(&self) -> String {
-        format!("{:#?}", self)
+        render_kv_table(
+            [
+                (
+                    "Signed certificate".to_string(),
+                    self.tbs_certificate.render(),
+                ),
+                (
+                    "Signature algorithm".to_string(),
+                    self.signature_algorithm.render(),
+                ),
+                ("Signature".to_string(), self.signature.render()),
+            ]
+            .into_iter(),
+        )
+    }
+}
+
+impl Render for x509_certificate::rfc5280::TbsCertificate {
+    fn render(&self) -> String {
+        let mut table = vec![
+            ("Version".to_string(), self.version.render()),
+            ("Serial number".to_string(), self.serial_number.render()),
+            ("Signature algorithm".to_string(), self.signature.render()),
+            ("Issuer".to_string(), self.issuer.render()),
+            ("Validity".to_string(), self.validity.render()),
+            ("Subject".to_string(), self.subject.render()),
+            (
+                "Subject public key".to_string(),
+                self.subject_public_key_info.render(),
+            ),
+        ];
+        if let Some(val) = &self.issuer_unique_id {
+            table.push(("Issuer ID".to_string(), val.render()));
+        }
+        if let Some(val) = &self.subject_unique_id {
+            table.push(("Subject ID".to_string(), val.render()));
+        }
+        if let Some(val) = &self.extensions {
+            table.push(("Extensions".to_string(), val.render()));
+        }
+        render_kv_table(table.into_iter())
+    }
+}
+
+impl Render for x509_certificate::rfc3280::Name {
+    fn render(&self) -> String {
+        format!("{:#?}", self) // TODO
+    }
+}
+
+impl Render for x509_certificate::rfc5280::Validity {
+    fn render(&self) -> String {
+        render_kv_table(
+            [
+                ("Not before".to_string(), self.not_before.render()),
+                ("Not after".to_string(), self.not_after.render()),
+            ]
+            .into_iter(),
+        )
     }
 }
 

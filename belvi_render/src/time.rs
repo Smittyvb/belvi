@@ -7,6 +7,12 @@ impl Render for x509_certificate::asn1time::UtcTime {
     }
 }
 
+impl Render for x509_certificate::asn1time::GeneralizedTime {
+    fn render(&self) -> String {
+        (**self).render() // get inner chrono::DateTime
+    }
+}
+
 impl Render for chrono::DateTime<chrono::Utc> {
     fn render(&self) -> String {
         format!(
@@ -14,6 +20,16 @@ impl Render for chrono::DateTime<chrono::Utc> {
             self.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
             self.format("%B %e, %Y, %k:%M:%S").html_escape()
         )
+    }
+}
+
+impl Render for x509_certificate::asn1time::Time {
+    fn render(&self) -> String {
+        use x509_certificate::asn1time::Time;
+        match self {
+            Time::UtcTime(t) => t.render(),
+            Time::GeneralTime(t) => t.render(),
+        }
     }
 }
 

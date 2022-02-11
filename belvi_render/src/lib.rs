@@ -3,6 +3,7 @@
 
 use x509_certificate::{certificate::X509Certificate, rfc5280::Certificate};
 
+mod html_escape;
 mod oid;
 
 pub trait Render {
@@ -19,5 +20,11 @@ impl Render for X509Certificate {
 impl Render for Certificate {
     fn render(&self) -> String {
         format!("{:#?}", self)
+    }
+}
+
+impl Render for x509_certificate::asn1time::UtcTime {
+    fn render(&self) -> String {
+        format!("<time></time>")
     }
 }

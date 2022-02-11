@@ -5,9 +5,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+belvi_log_list = { path = "../belvi_log_list" }
+
 reqwest = { version = "0.11.9", features = ["brotli", "gzip", "json"] }
 tokio = { version = "1.16.1", features = ["full"] }
 serde_json = "1.0.78"
 serde = { version = "1.0.136", features = ["derive"]}
-belvi_log_list = { path = "../belvi_log_list" }
 base64 = "0.13.0"
+x509-certificate = "0.6.0"

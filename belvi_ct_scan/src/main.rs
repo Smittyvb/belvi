@@ -61,8 +61,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{:#?}", resp);
     }
     {
-        let resp = fetcher.fetch_entries(argon2021, 10, 12).await?;
-        println!("{:#?}", resp);
+        let resp = fetcher.fetch_entries(argon2021, 307, 310).await?;
+        let cert_bytes = resp[1].leaf_input.timestamped_entry.log_entry.inner_cert();
+        let cert =
+            x509_certificate::certificate::X509Certificate::from_der(&cert_bytes[..]).unwrap();
+        println!("{:#?}", cert);
     }
     Ok(())
 }

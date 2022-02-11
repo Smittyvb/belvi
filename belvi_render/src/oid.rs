@@ -8,7 +8,7 @@ where
 {
     fn render(&self) -> String {
         format!(
-            r#"<span class="oid" data-oid="{oid}">{oid}</span>"#,
+            r#"<span class="bvcert-oid" data-oid="{oid}">{oid}</span>"#,
             oid = self.html_escape()
         )
     }

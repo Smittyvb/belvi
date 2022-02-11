@@ -55,3 +55,18 @@ impl Render for x509_certificate::rfc5280::AlgorithmIdentifier {
         render_kv_table(table.into_iter())
     }
 }
+
+impl Render for x509_certificate::rfc5280::SubjectPublicKeyInfo {
+    fn render(&self) -> String {
+        render_kv_table(
+            [
+                ("Algorithm".to_string(), self.algorithm.render()),
+                (
+                    "Subject public key".to_string(),
+                    self.subject_public_key.render(),
+                ),
+            ]
+            .into_iter(),
+        )
+    }
+}

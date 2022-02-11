@@ -8,5 +8,5 @@ fn main() {
     let path_str = args.nth(1).unwrap();
     let cert_bytes = fs::read(path_str).unwrap();
     let cert = x509_certificate::certificate::X509Certificate::from_der(&cert_bytes[..]).unwrap();
-    println!("{}", cert.render());
+    println!("<style>{}</style>{}", include_str!("../bvcert.css"), cert.render());
 }

@@ -3,6 +3,7 @@
 
 use x509_certificate::{certificate::X509Certificate, rfc5280::Certificate};
 
+mod arrays;
 mod extensions;
 mod html_escape;
 mod oid;
@@ -75,9 +76,15 @@ impl Render for x509_certificate::rfc5280::TbsCertificate {
     }
 }
 
-impl Render for x509_certificate::rfc3280::Name {
+impl Render for x509_certificate::rfc3280::AttributeTypeAndValue {
     fn render(&self) -> String {
-        format!("{:#?}", self) // TODO
+        render_kv_table(
+            [
+                ("Type".to_string(), self.typ.render()),
+                ("Value".to_string(), self.value.render()),
+            ]
+            .into_iter(),
+        )
     }
 }
 

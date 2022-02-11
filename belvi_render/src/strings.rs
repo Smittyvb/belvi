@@ -15,6 +15,12 @@ impl Render for bytes::Bytes {
     }
 }
 
+impl Render for &[u8] {
+    fn render(&self) -> String {
+        bytes::Bytes::copy_from_slice(self).render()
+    }
+}
+
 impl Render for bcder::BitString {
     fn render(&self) -> String {
         let bytes_rendered = self.octet_bytes().render();
@@ -24,6 +30,12 @@ impl Render for bcder::BitString {
         } else {
             format!("{} (last {} bits unused)", bytes_rendered, unused)
         }
+    }
+}
+
+impl Render for bcder::Integer {
+    fn render(&self) -> String {
+        self.as_slice().render()
     }
 }
 

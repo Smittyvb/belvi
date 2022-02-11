@@ -23,7 +23,7 @@ mod test {
         let oid = Oid([192, 200, 50, 30]);
         assert_eq!(
             Render::render(&oid),
-            "<span class=\"oid\" data-oid=\"2.1057762.30\">2.1057762.30</span>".to_string()
+            "<span class=\"bvcert-oid\" data-oid=\"2.1057762.30\">2.1057762.30</span>".to_string()
         );
     }
 }

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+[package]
+name = "belvi_render"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+x509-certificate = "0.6.0"
+bcder = "0.6.1"

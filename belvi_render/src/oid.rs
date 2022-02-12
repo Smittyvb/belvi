@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
             let oid_data = include_str!("oid/dumpasn1.txt");
             let mut oid = None;
             for line in oid_data.lines() {
-                if line.is_empty() || line.starts_with("#") { continue; }
+                if line.is_empty() || line.starts_with('#') { continue; }
                 let mut parts = line.split(" = ");
                 match parts.next().unwrap() {
                     "OID" => oid = Some(parse::parse_oid(parts.next().unwrap())),
@@ -30,8 +30,8 @@ lazy_static::lazy_static! {
         {
             let oid_data = include_str!("oid/oids.txt");
             for line in oid_data.lines() {
-                if line.is_empty() || line.starts_with("#") { continue; }
-                let mut parts = line.split("=");
+                if line.is_empty() || line.starts_with('#') { continue; }
+                let mut parts = line.split('=');
                 hm.insert(parse::parse_oid(parts.next().unwrap()), parts.next().unwrap().to_string());
             }
         }

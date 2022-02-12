@@ -10,9 +10,9 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
     }
 
     macro_rules! forward_to_render {
-        ($($thing:ident),+,) => {
+        ($($($thing:ident)::+),+,) => {
             $(
-                if let Ok(thing) = bcder::$thing::take_from(cons) {
+                if let Ok(thing) = $($thing ::)+take_from(cons) {
                     return Ok(thing.render());
                 }
             )+
@@ -20,14 +20,16 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
     }
 
     forward_to_render![
-        Ia5String,
-        NumericString,
-        PrintableString,
-        Utf8String,
-        OctetString,
-        Oid,
-        BitString,
-        Integer,
+        bcder::Ia5String,
+        bcder::NumericString,
+        bcder::PrintableString,
+        bcder::Utf8String,
+        bcder::OctetString,
+        bcder::Oid,
+        bcder::BitString,
+        bcder::Integer,
+        x509_certificate::asn1time::GeneralizedTime,
+        x509_certificate::asn1time::UtcTime,
     ];
 
     if let Ok(s) = cons.take_sequence(|x| {

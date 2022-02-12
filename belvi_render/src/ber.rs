@@ -54,7 +54,7 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
             match content {
                 Content::Primitive(prim) => {
                     let bytes = prim.take_all()?;
-                    Ok(bytes.render())
+                    Ok(String::from_utf8_lossy(&bytes.to_vec()).html_escape())
                 }
                 Content::Constructed(cons) => take_cons(cons), // TODO
             }

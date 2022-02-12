@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use std::fmt;
 
-pub fn entity_escape_char(khar: &char) -> String {
-    format!("&#x{:X};", (*khar) as u32)
+pub fn entity_escape_char(khar: char) -> String {
+    format!("&#x{:X};", khar as u32)
 }
 
 /// Escapes a string to allow it to be used in HTML as:
@@ -16,9 +16,9 @@ pub fn html_escape(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     for khar in text.chars() {
         match khar {
-            _c @ '0'..='9' | _c @ 'A'..='Z' | _c @ 'a'..='z' => result.push(khar),
+            _c @ ('0' ..='9' | 'A' ..='Z' | 'a' ..='z')  => result.push(khar),
             ' ' | '.' => result.push(khar),
-            c => result.push_str(&entity_escape_char(&c)),
+            c => result.push_str(&entity_escape_char(c)),
         }
     }
     result
@@ -43,8 +43,8 @@ mod tests {
 
     #[test]
     fn entity_escape() {
-        assert_eq!(entity_escape_char(&'<'), "&#x3C;");
-        assert_eq!(entity_escape_char(&'a'), "&#x61;");
+        assert_eq!(entity_escape_char('<'), "&#x3C;");
+        assert_eq!(entity_escape_char('a'), "&#x61;");
     }
 
     #[test]

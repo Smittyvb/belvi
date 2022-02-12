@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use super::{render_kv_table, Render};
 
 macro_rules! render_vec_wrapper {

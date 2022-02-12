@@ -50,11 +50,21 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
     }
 
     cons.take_value(|tag, content| {
-        match content {
-            Content::Primitive(prim) => prim.skip_all(),
-            Content::Constructed(cons) => cons.skip_all(),
-        }?;
-        Err(bcder::decode::Error::Unimplemented)
+        if tag.is_context_specific() {
+            match content {
+                Content::Primitive(prim) => {
+                    let bytes = prim.take_all()?;
+                    Ok(bytes.render())
+                }
+                Content::Constructed(cons) => take_cons(cons), // TODO
+            }
+        } else {
+            match content {
+                Content::Primitive(prim) => prim.skip_all(),
+                Content::Constructed(cons) => cons.skip_all(),
+            }?;
+            Err(bcder::decode::Error::Unimplemented)
+        }
     })
 }
 

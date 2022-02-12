@@ -114,12 +114,10 @@ impl Render for x509_certificate::rfc5280::AlgorithmIdentifier {
     fn render(&self) -> String {
         let mut table = vec![("Algorithm".to_string(), self.algorithm.render())];
         if let Some(params) = &self.parameters {
-            let val = if let Ok(oid) = params.decode_oid() {
-                oid.render()
-            } else {
-                "(invalid OID)".to_string()
-            };
-            table.push(("Algorithm identifier".to_string(), val));
+            table.push((
+                "Algorithm identifier".to_string(),
+                ber::render_ber((***params).clone()),
+            ));
         }
         render_kv_table(table.into_iter())
     }

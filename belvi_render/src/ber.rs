@@ -55,9 +55,7 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
             Content::Constructed(cons) => cons.skip_all(),
         }?;
         Err(bcder::decode::Error::Unimplemented)
-    })?;
-
-    Err(bcder::decode::Error::Malformed)
+    })
 }
 
 pub fn render_ber(bytes: bytes::Bytes) -> String {

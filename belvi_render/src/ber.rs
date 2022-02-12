@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // decodes arbitrary BER
-use bcder::{decode::Constructed, Mode};
+use bcder::{decode::Constructed, decode::Content, Mode};
 
 use super::{html_escape::HtmlEscapable, render_array, Render};
 
@@ -34,13 +34,28 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
 
     if let Ok(s) = cons.take_sequence(|subcons| {
         let mut table = Vec::new();
-        while let Ok(val) = take_cons(subcons) {
-            table.push(val);
+        loop {
+            match take_cons(subcons) {
+                Ok(val) => table.push(val),
+                Err(bcder::decode::Error::Malformed) => break,
+                Err(bcder::decode::Error::Unimplemented) => {
+                    table.push("unimplemented BER".to_string());
+                    break;
+                }
+            }
         }
         Ok(render_array(table.into_iter()))
     }) {
         return Ok(s);
     }
+
+    cons.take_value(|tag, content| {
+        match content {
+            Content::Primitive(prim) => prim.skip_all(),
+            Content::Constructed(cons) => cons.skip_all(),
+        }?;
+        Err(bcder::decode::Error::Unimplemented)
+    })?;
 
     Err(bcder::decode::Error::Malformed)
 }

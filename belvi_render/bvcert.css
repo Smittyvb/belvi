@@ -29,6 +29,6 @@ body {
     padding: 0;
 }
 
-.bvcert-null {
+.bvcert-null, .bvcert-empty {
     color: rgb(84, 84, 84);
 }

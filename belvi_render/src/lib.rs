@@ -13,14 +13,19 @@ mod time;
 
 /// Render a key-value table.
 fn render_kv_table(rows: impl Iterator<Item = (String, String)>) -> String {
-    format!(
-        r#"<table class="bvcert-kv-table">{}</table>"#,
-        rows.map(|(k, v)| format!(
-            r#"<tr><th><span class="bvcert-kv-th-text">{}</span></th><td>{}</td></tr>"#,
-            k, v
-        ))
-        .fold(String::new(), |a, b| a + &b)
-    )
+    let rows_html = rows
+        .map(|(k, v)| {
+            format!(
+                r#"<tr><th><span class="bvcert-kv-th-text">{}</span></th><td>{}</td></tr>"#,
+                k, v
+            )
+        })
+        .fold(String::new(), |a, b| a + &b);
+    if rows_html.is_empty() {
+        r#"<span class="bvcert-empty">(empty)</span>"#.to_string()
+    } else {
+        format!(r#"<table class="bvcert-kv-table">{}</table>"#, rows_html)
+    }
 }
 
 fn render_array(rows: impl Iterator<Item = String>) -> String {

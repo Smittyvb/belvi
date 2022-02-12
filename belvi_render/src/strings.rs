@@ -9,9 +9,18 @@ impl Render for OctetString {
     }
 }
 
+const BYTES_LEN_LIMIT: usize = 30;
+
 impl Render for bytes::Bytes {
     fn render(&self) -> String {
-        format!(r#"<code class="bvcert-bytes">{:X}</code>"#, self)
+        if self.len() > BYTES_LEN_LIMIT {
+            format!(
+                r#"<code class="bvcert-bytes">{:X}…</code>"#,
+                self.slice(0..BYTES_LEN_LIMIT)
+            )
+        } else {
+            format!(r#"<code class="bvcert-bytes">{:X}</code>"#, self)
+        }
     }
 }
 

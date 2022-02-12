@@ -9,14 +9,14 @@ impl Render for OctetString {
     }
 }
 
-const BYTES_LEN_LIMIT: usize = 30;
+const LEN_LIMIT: usize = 30;
 
 impl Render for bytes::Bytes {
     fn render(&self) -> String {
-        if self.len() > BYTES_LEN_LIMIT {
+        if self.len() > LEN_LIMIT {
             format!(
                 r#"<code class="bvcert-bytes">{:X}…</code>"#,
-                self.slice(0..BYTES_LEN_LIMIT)
+                self.slice(0..LEN_LIMIT)
             )
         } else {
             format!(r#"<code class="bvcert-bytes">{:X}</code>"#, self)
@@ -32,12 +32,16 @@ impl Render for &[u8] {
 
 impl Render for bcder::BitString {
     fn render(&self) -> String {
-        let bytes_rendered = self.octet_bytes().render();
-        let unused = self.unused();
-        if unused == 0 {
-            bytes_rendered
+        if self.unused() == 0 {
+            self.octet_bytes().render()
         } else {
-            format!("{} (last {} bits unused)", bytes_rendered, unused)
+            let mut bits_string = self
+                .octet_bytes()
+                .into_iter()
+                .map(|byte| format!("{:0>8b}", byte))
+                .fold(String::new(), |a, b| a + &b + " ");
+            bits_string.truncate(bits_string.len() - 1 - self.unused() as usize);
+            format!(r#"<code class="bvcert-bytes">{}</code>"#, bits_string)
         }
     }
 }
@@ -58,6 +62,15 @@ mod test {
         assert_eq!(
             bytes.render(),
             "<code class=\"bvcert-bytes\">48656C6C6F20776F726C6421</code>"
+        );
+    }
+
+    #[test]
+    fn bits() {
+        let bits = bcder::BitString::new(5, bytes::Bytes::from("magic!"));
+        assert_eq!(
+            bits.render(),
+            "<code class=\"bvcert-bytes\">01101101 01100001 01100111 01101001 01100011 001</code>"
         );
     }
 }

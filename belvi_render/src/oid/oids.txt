@@ -2,8 +2,13 @@
 
 # For OIDs not in dumpasn1.txt, or need to be overriden.
 
+# Baseline rules: http://oid-info.com/get/2.23.140.1.2
+2 23 140 1 2 1=domainValidated
+2 23 140 1 2 2=organizationValidated
+2 23 140 1 2 3=individualValidated
+
 # Certificate transparency: https://datatracker.ietf.org/doc/html/rfc6962
-1 3 6 1 4 1 11129 2 4 2=Embedded SCTs
-1 3 6 1 4 1 11129 2 4 3=Precertificate poison
-1 3 6 1 4 1 11129 2 4 4=Precertificate signing
-1 3 6 1 4 1 11129 2 4 5=TLS SCTs
+1 3 6 1 4 1 11129 2 4 2=embeddedSCTs
+1 3 6 1 4 1 11129 2 4 3=precertificatePoison
+1 3 6 1 4 1 11129 2 4 4=precertificateSigning
+1 3 6 1 4 1 11129 2 4 5=tLSsCTs

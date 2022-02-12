@@ -28,3 +28,7 @@ body {
     border: 2px solid rgb(88, 88, 88);
     padding: 0;
 }
+
+.bvcert-null {
+    color: rgb(84, 84, 84);
+}

@@ -42,7 +42,7 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
 
 pub fn render_ber(bytes: bytes::Bytes) -> String {
     let orig_bytes = bytes.clone();
-    if let Ok(text) = Constructed::decode(bytes, Mode::Der, take_cons) {
+    if let Ok(text) = Constructed::decode(bytes, Mode::Ber, take_cons) {
         text
     } else {
         format!("Unparsed DER: {}", orig_bytes.render())

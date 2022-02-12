@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+// COMMON_OIDS triggers this due to having Bytes, but this is a non-issue per docs
+#![allow(clippy::mutable_key_type)]
+
 use bcder::oid::Oid;
 use std::collections::HashMap;
 

@@ -9,11 +9,31 @@ use super::{html_escape::HtmlEscapable, Render};
 lazy_static::lazy_static! {
     static ref COMMON_OIDS: HashMap<Oid<bytes::Bytes>, String> = {
         let mut hm = HashMap::new();
-        let oid_data = include_str!("oid/oids.txt");
-        for line in oid_data.lines() {
-            if line.is_empty() || line.starts_with("#") { continue; }
-            let mut parts = line.split("=");
-            hm.insert(parse::parse_oid(parts.next().unwrap()), parts.next().unwrap().to_string());
+        {
+            let oid_data = include_str!("oid/dumpasn1.txt");
+            let mut oid = None;
+            for line in oid_data.lines() {
+                if line.is_empty() || line.starts_with("#") { continue; }
+                let mut parts = line.split(" = ");
+                match parts.next().unwrap() {
+                    "OID" => oid = Some(parse::parse_oid(parts.next().unwrap())),
+                    "Description" => {
+                        let desc = parts.next().unwrap().to_string();
+                        hm.insert(oid.unwrap(), desc);
+                        oid = None;
+                    }
+                    "Comment" | "Warning" => {},
+                    p => panic!("invalid dumpasn1 data: prefix of {}", p),
+                }
+            }
+        }
+        {
+            let oid_data = include_str!("oid/oids.txt");
+            for line in oid_data.lines() {
+                if line.is_empty() || line.starts_with("#") { continue; }
+                let mut parts = line.split("=");
+                hm.insert(parse::parse_oid(parts.next().unwrap()), parts.next().unwrap().to_string());
+            }
         }
         hm
     };

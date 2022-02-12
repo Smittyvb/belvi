@@ -8,7 +8,7 @@ fn from_str(s: &str) -> Result<u32, &'static str> {
 }
 
 pub fn parse_oid(arg: &str) -> Oid {
-    let mut components = arg.split('.');
+    let mut components = arg.split(' ');
     let (first, second) = match (components.next(), components.next()) {
         (Some(first), Some(second)) => (first, second),
         _ => {

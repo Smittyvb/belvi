@@ -43,7 +43,7 @@ impl Render for Oid<bytes::Bytes> {
     fn render(&self) -> String {
         if let Some(val) = COMMON_OIDS.get(self) {
             format!(
-                r#"<span class="bvcert-oid" data-oid="{oid}">{name}</span>"#,
+                r#"<span class="bvcert-oid" data-oid="{oid}" title="{oid}">{name}</span>"#,
                 oid = self.html_escape(),
                 name = val,
             )

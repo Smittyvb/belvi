@@ -23,6 +23,13 @@ fn render_kv_table(rows: impl Iterator<Item = (String, String)>) -> String {
     )
 }
 
+fn render_array(rows: impl Iterator<Item = String>) -> String {
+    render_kv_table(
+        rows.enumerate()
+            .map(|(idx, val)| (format!("{}.", idx), val)),
+    )
+}
+
 pub trait Render {
     fn render(&self) -> String;
 }

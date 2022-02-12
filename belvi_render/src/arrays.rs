@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-use super::{render_kv_table, Render};
+use super::{render_array, Render};
 
 macro_rules! render_vec_wrapper {
     ($t:path) => {
         impl Render for $t {
             fn render(&self) -> String {
-                render_kv_table(
-                    self.iter()
-                        .enumerate()
-                        .map(|(idx, val)| (format!("{}.", idx), val.render())),
-                )
+                render_array(self.iter().map(Render::render))
             }
         }
     };

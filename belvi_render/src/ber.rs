@@ -2,7 +2,7 @@
 // decodes arbitrary BER
 use bcder::{decode::Constructed, Mode};
 
-use super::{html_escape::HtmlEscapable, Render};
+use super::{html_escape::HtmlEscapable, render_array, Render};
 
 fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::decode::Error> {
     if let Ok(()) = cons.take_null() {
@@ -32,9 +32,12 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
         x509_certificate::asn1time::UtcTime,
     ];
 
-    if let Ok(s) = cons.take_sequence(|x| {
-        dbg!(x);
-        Err(bcder::decode::Error::Malformed)
+    if let Ok(s) = cons.take_sequence(|subcons| {
+        let mut table = Vec::new();
+        while let Ok(val) = take_cons(subcons) {
+            table.push(val);
+        }
+        Ok(render_array(table.into_iter()))
     }) {
         return Ok(s);
     }

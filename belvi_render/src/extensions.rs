@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use super::{render_kv_table, Render};
+use super::{ber::render_ber, render_kv_table, Render};
 
 use x509_certificate::rfc5280::{Extension, Extensions};
 
@@ -24,6 +24,6 @@ impl Render for Extensions {
 impl Render for Extension {
     fn render(&self) -> String {
         // TODO: recognize common extensions
-        self.value.render()
+        render_ber(self.value.to_bytes())
     }
 }

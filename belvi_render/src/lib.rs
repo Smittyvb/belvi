@@ -4,6 +4,7 @@
 use x509_certificate::{certificate::X509Certificate, rfc5280::Certificate};
 
 mod arrays;
+pub(crate) mod ber;
 mod extensions;
 mod html_escape;
 mod oid;
@@ -84,7 +85,7 @@ impl Render for x509_certificate::rfc3280::AttributeTypeAndValue {
         render_kv_table(
             [
                 ("Type".to_string(), self.typ.render()),
-                ("Value".to_string(), self.value.render()),
+                ("Value".to_string(), ber::render_ber((**self.value).clone())),
             ]
             .into_iter(),
         )

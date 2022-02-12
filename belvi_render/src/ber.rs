@@ -27,6 +27,7 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
         OctetString,
         Oid,
         BitString,
+        Integer,
     ];
 
     if let Ok(s) = cons.take_sequence(|x| {

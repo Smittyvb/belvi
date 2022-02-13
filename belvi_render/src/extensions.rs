@@ -7,13 +7,18 @@ impl Render for Extensions {
     fn render(&self) -> String {
         let table = self.iter().map(|ext| {
             let key = format!(
-                r#"<span class="bvcert-{}">{}</span>"#,
+                r#"<span class="bvcert-{}">{}{}</span>"#,
                 if ext.critical == Some(true) {
                     "critical"
                 } else {
                     "noncritical"
                 },
-                ext.id.render()
+                ext.id.render(),
+                if ext.critical == Some(true) {
+                    " (critical)"
+                } else {
+                    ""
+                }
             );
             (key, ext.render())
         });

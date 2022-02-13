@@ -16,8 +16,7 @@ pub fn html_escape(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     for khar in text.chars() {
         match khar {
-            _c @ ('0' ..='9' | 'A' ..='Z' | 'a' ..='z')  => result.push(khar),
-            ' ' | '.' => result.push(khar),
+            _c @ ('0'..='9' | 'A'..='Z' | 'a'..='z' | ' ' | '.') => result.push(khar),
             c => result.push_str(&entity_escape_char(c)),
         }
     }

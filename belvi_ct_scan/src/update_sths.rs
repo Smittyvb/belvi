@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use crate::{Ctx, FetchState, LogFetchState, LogId};
 
 impl FetchState {

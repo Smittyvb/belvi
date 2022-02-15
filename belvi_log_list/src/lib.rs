@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -97,10 +98,39 @@ impl Log {
             self.url, leaf_index, tree_size
         )
     }
+
+    /// Is it possible that this log has unexpired certs that can be fetched?
+    pub fn has_active_certs(&self, now: DateTime<Utc>) -> bool {
+        const OLD_MAX_CERT_DURATION: i64 = 825;
+        const NEW_MAX_CERT_DURATION: i64 = 398;
+        // 825 days after Sept. 1, 2020 (when duration was shortened)
+        // = Dec. 6, 2022
+        const CERT_DURATION_SWITCH: i64 = 1670302800;
+        let timestamp = match self.state {
+            LogState::Retired { .. } => return false,
+            LogState::Usable { ref timestamp } | LogState::ReadOnly { ref timestamp, .. } => {
+                timestamp
+            }
+        };
+        let timestamp = DateTime::parse_from_rfc3339(timestamp).expect("invalid log data");
+        let now = now.timestamp();
+        let extra_days = if now > CERT_DURATION_SWITCH {
+            NEW_MAX_CERT_DURATION
+        } else {
+            OLD_MAX_CERT_DURATION
+        };
+        let oldest_certs_expiration = timestamp + Duration::days(extra_days);
+        oldest_certs_expiration.timestamp() > now
+    }
 }
 
 impl LogList {
     pub fn google() -> Self {
         serde_json::from_str(include_str!("../log_list.json")).unwrap()
+    }
+
+    /// Returns an iterator of all logs run by all log operators.
+    pub fn logs(&self) -> impl Iterator<Item = &Log> {
+        self.operators.iter().map(|op| op.logs.iter()).flatten()
     }
 }

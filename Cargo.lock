@@ -65,6 +65,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "belvi_log_list",
+ "chrono",
  "reqwest",
  "serde",
  "serde_json",
@@ -76,6 +77,7 @@ dependencies = [
 name = "belvi_log_list"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "serde",
  "serde_json",
 ]

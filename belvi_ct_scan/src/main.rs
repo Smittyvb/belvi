@@ -1,5 +1,6 @@
-use chrono::{DateTime, Utc};
 // SPDX-License-Identifier: Apache-2.0
+use chrono::{DateTime, Utc};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::PathBuf};
 
@@ -108,8 +109,12 @@ impl Ctx {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+    info!("Starting Belvi fetcher");
+
     let ctx = Ctx::from_env();
     let mut fetch_state = FetchState::new(&ctx);
+
     fetch_state.update_sths(&ctx).await;
     dbg!(fetch_state);
     Ok(())

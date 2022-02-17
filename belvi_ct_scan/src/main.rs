@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use chrono::{DateTime, Utc};
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::PathBuf};
 
@@ -69,9 +69,11 @@ struct FetchState {
 
 impl FetchState {
     fn new_sync(ctx: &Ctx) -> Self {
-        if let Ok(data) = fs::read_to_string(&ctx.data_path) {
+        if let Ok(data) = fs::read_to_string(&ctx.fetch_state_path) {
+            info!("Loading fetch state from {:?}", ctx.fetch_state_path);
             serde_json::from_str(&data).unwrap()
         } else {
+            warn!("No fetch state found, creating new");
             Self {
                 state_ver: 1,
                 log_states: HashMap::new(),
@@ -79,6 +81,7 @@ impl FetchState {
         }
     }
     async fn save(&self, ctx: &Ctx) {
+        info!("Saving fetch state to {:?}", ctx.data_path);
         tokio::fs::write(
             ctx.fetch_state_path.clone(),
             serde_json::to_string(self).expect("couldn't stringify"),

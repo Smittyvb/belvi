@@ -78,6 +78,14 @@ impl FetchState {
             }
         }
     }
+    async fn save(&self, ctx: &Ctx) {
+        tokio::fs::write(
+            ctx.fetch_state_path.clone(),
+            serde_json::to_string(self).expect("couldn't stringify"),
+        )
+        .await
+        .expect("failed to save");
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -89,6 +97,7 @@ struct LogFetchState {
 #[derive(Debug)]
 struct Ctx {
     data_path: PathBuf,
+    fetch_state_path: PathBuf,
     log_list: LogList,
     fetcher: Fetcher,
     start_time: DateTime<Utc>,
@@ -97,9 +106,11 @@ struct Ctx {
 impl Ctx {
     fn from_env() -> Self {
         let mut args = env::args_os();
-        let data_path = args.nth(1).unwrap().into();
+        let data_path: PathBuf = args.nth(1).unwrap().into();
+        let fetch_state_path = data_path.clone().join("state.json");
         Ctx {
             data_path,
+            fetch_state_path,
             log_list: LogList::google(),
             fetcher: Fetcher::new(),
             start_time: Utc::now(),
@@ -116,6 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut fetch_state = FetchState::new_sync(&ctx);
 
     fetch_state.update_sths(&ctx).await;
-    dbg!(fetch_state);
+    fetch_state.save(&ctx).await;
+
     Ok(())
 }

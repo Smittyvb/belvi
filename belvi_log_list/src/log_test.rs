@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 use super::*;
+use chrono::TimeZone;
+
+fn jan_1_2022() -> DateTime<Utc> {
+    chrono::Utc.ymd(2022, 01, 01).and_hms(00, 00, 00)
+}
 
 #[test]
 fn argon2021() {
@@ -45,6 +50,7 @@ fn argon2021() {
         "https://ct.googleapis.com/logs/argon2021/ct/v1/get-entries?start=1337&end=31337"
             .to_string()
     );
+    assert!(!log.has_active_certs(jan_1_2022()));
 }
 
 #[test]
@@ -67,7 +73,8 @@ fn aviator() {
             }
         }
     "#;
-    assert_eq!(serde_json::from_str::<Log>(data).unwrap(), Log {
+    let log = serde_json::from_str::<Log>(data).unwrap();
+    assert_eq!(log, Log {
         description: "Google 'Aviator' log".to_string(),
         log_id: "aPaY+B9kgr46jO65KB1M/HFRXWeT1ETRCmesu09P+8Q=".to_string(),
         key: "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1/TMabLkDpCjiupacAlP7xNi0I1JYP8bQFAHDG1xhtolSY1l4QgNRzRrvSe8liE+NPWHdjGxfx3JhTsN9x8/6Q==".to_string(),
@@ -82,4 +89,29 @@ fn aviator() {
         },
         temporal_interval: None,
     });
+    assert!(!log.has_active_certs(jan_1_2022()));
+}
+
+#[test]
+fn nimbus2022() {
+    let data = r#"
+        {
+            "description": "Cloudflare 'Nimbus2022' Log",
+            "log_id": "QcjKsd8iRkoQxqE6CUKHXk4xixsD6+tLx2jwkGKWBvY=",
+            "key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESLJHTlAycmJKDQxIv60pZG8g33lSYxYpCi5gteI6HLevWbFVCdtZx+m9b+0LrwWWl/87mkNN6xE0M4rnrIPA/w==",
+            "url": "https://ct.cloudflare.com/logs/nimbus2022/",
+            "mmd": 86400,
+            "state": {
+                "usable": {
+                    "timestamp": "2019-10-31T19:22:00Z"
+                }
+            },
+            "temporal_interval": {
+                "start_inclusive": "2022-01-01T00:00:00Z",
+                "end_exclusive": "2023-01-01T00:00:00Z"
+            }
+        }
+    "#;
+    let log = serde_json::from_str::<Log>(data).unwrap();
+    assert!(log.has_active_certs(jan_1_2022()));
 }

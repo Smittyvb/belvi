@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::{Ctx, FetchState, LogFetchState, LogId};
-use log::{error, info};
+use log::{debug, error, info, trace};
 
 impl FetchState {
     pub async fn update_sths(&mut self, ctx: &Ctx) {
@@ -16,7 +16,7 @@ impl FetchState {
                 .fetch_sth(log)
                 .await
                 .expect("Failed to fetch log STH, bailing");
-            info!("Fetching STH for \"{}\"", log.description);
+            trace!("Fetching STH for \"{}\"", log.description);
             let log_id = LogId(log.log_id.clone());
             match self.log_states.get_mut(&log_id) {
                 Some(state) => {
@@ -24,10 +24,12 @@ impl FetchState {
                     if old_sth.tree_size > new_sth.tree_size
                         || old_sth.timestamp > new_sth.timestamp
                     {
-                        error!(
-                            "log operator violated append-only {:?} to {:?}",
-                            old_sth, new_sth
-                        );
+                        error!("log violated append-only {:?} to {:?}", old_sth, new_sth);
+                    }
+                    if old_sth.tree_size == new_sth.tree_size {
+                        debug!("Log \"{}\" is unchanged", log.description);
+                    } else {
+                        debug!("Log \"{}\" has new certs", log.description);
                     }
                     state.sth = new_sth;
                 }

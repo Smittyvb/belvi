@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use chrono::{DateTime, Utc};
-use log::{info, warn};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::PathBuf};
 
@@ -111,12 +111,14 @@ impl Ctx {
         let mut args = env::args_os();
         let data_path: PathBuf = args.nth(1).unwrap().into();
         let fetch_state_path = data_path.clone().join("state.json");
+        let start_time = Utc::now();
+        debug!("Start time is {:?}", start_time);
         Ctx {
             data_path,
             fetch_state_path,
+            start_time,
             log_list: LogList::google(),
             fetcher: Fetcher::new(),
-            start_time: Utc::now(),
         }
     }
 }

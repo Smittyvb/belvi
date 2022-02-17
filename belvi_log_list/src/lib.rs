@@ -101,26 +101,44 @@ impl Log {
 
     /// Is it possible that this log has unexpired certs that can be fetched?
     pub fn has_active_certs(&self, now: DateTime<Utc>) -> bool {
-        const OLD_MAX_CERT_DURATION: i64 = 825;
-        const NEW_MAX_CERT_DURATION: i64 = 398;
-        // 825 days after Sept. 1, 2020 (when duration was shortened)
-        // = Dec. 6, 2022
-        const CERT_DURATION_SWITCH: i64 = 1670302800;
-        let timestamp = match self.state {
-            LogState::Retired { .. } => return false,
-            LogState::Usable { ref timestamp } | LogState::ReadOnly { ref timestamp, .. } => {
-                timestamp
+        if let Some(TemporalInterval {
+            start_inclusive: _,
+            end_exclusive,
+        }) = &self.temporal_interval
+        {
+            if matches!(self.state, LogState::Retired { .. }) {
+                false
+            } else {
+                let end_exclusive =
+                    DateTime::parse_from_rfc3339(&end_exclusive).expect("invalid log data");
+                end_exclusive > now
             }
-        };
-        let timestamp = DateTime::parse_from_rfc3339(timestamp).expect("invalid log data");
-        let now = now.timestamp();
-        let extra_days = if now > CERT_DURATION_SWITCH {
-            NEW_MAX_CERT_DURATION
         } else {
-            OLD_MAX_CERT_DURATION
-        };
-        let oldest_certs_expiration = timestamp + Duration::days(extra_days);
-        oldest_certs_expiration.timestamp() > now
+            match self.state {
+                // log isn't up anymore
+                LogState::Retired { .. } => false,
+                // timestamp is time when log started
+                LogState::Usable { .. } => true,
+                // timestamp is point when certs stop being accepted
+                LogState::ReadOnly { ref timestamp, .. } => {
+                    const OLD_MAX_CERT_DURATION: i64 = 825;
+                    const NEW_MAX_CERT_DURATION: i64 = 398;
+                    // 825 days after Sept. 1, 2020 (when duration was shortened)
+                    // = Dec. 6, 2022
+                    const CERT_DURATION_SWITCH: i64 = 1670302800;
+                    let timestamp =
+                        DateTime::parse_from_rfc3339(timestamp).expect("invalid log data");
+                    let now = now.timestamp();
+                    let extra_days = if now > CERT_DURATION_SWITCH {
+                        NEW_MAX_CERT_DURATION
+                    } else {
+                        OLD_MAX_CERT_DURATION
+                    };
+                    let oldest_certs_expiration = timestamp + Duration::days(extra_days);
+                    oldest_certs_expiration.timestamp() > now
+                }
+            }
+        }
     }
 }
 

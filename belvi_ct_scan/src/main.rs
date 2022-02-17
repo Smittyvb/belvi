@@ -68,7 +68,7 @@ struct FetchState {
 }
 
 impl FetchState {
-    fn new(ctx: &Ctx) -> Self {
+    fn new_sync(ctx: &Ctx) -> Self {
         if let Ok(data) = fs::read_to_string(&ctx.data_path) {
             serde_json::from_str(&data).unwrap()
         } else {
@@ -113,7 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting Belvi fetcher");
 
     let ctx = Ctx::from_env();
-    let mut fetch_state = FetchState::new(&ctx);
+    let mut fetch_state = FetchState::new_sync(&ctx);
 
     fetch_state.update_sths(&ctx).await;
     dbg!(fetch_state);

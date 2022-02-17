@@ -34,6 +34,7 @@ impl FetchState {
                     state.sth = new_sth;
                 }
                 None => {
+                    debug!("Got first STH for log \"{}\"", log.description);
                     self.log_states.insert(
                         log_id,
                         LogFetchState {

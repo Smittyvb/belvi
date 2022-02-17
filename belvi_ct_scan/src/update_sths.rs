@@ -16,12 +16,13 @@ impl FetchState {
                 .fetch_sth(log)
                 .await
                 .expect("Failed to fetch log STH, bailing");
+            info!("Fetching STH for \"{}\"", log.description);
             let log_id = LogId(log.log_id.clone());
             match self.log_states.get_mut(&log_id) {
                 Some(state) => {
                     let old_sth = &state.sth;
-                    if old_sth.tree_size <= new_sth.tree_size
-                        || old_sth.timestamp <= new_sth.timestamp
+                    if old_sth.tree_size > new_sth.tree_size
+                        || old_sth.timestamp > new_sth.timestamp
                     {
                         error!(
                             "log operator violated append-only {:?} to {:?}",

@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS domains_certs (
 -- CONFIGURE SQLITE --
 PRAGMA journal_mode = WAL;
 PRAGMA encoding = 'UTF-8';
+PRAGMA user_version = 1;
 
 -- OPTIMIZE DB --
 PRAGMA optimize;

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS meta(
 -- for now, just assume we are always on the initial version
 INSERT OR REPLACE into meta (k, v) values ("migration", "1.0.0");
 
-CREATE TABLE IF NOT EXISTS domains_certs (
+CREATE TABLE IF NOT EXISTS domain_certs (
     domain TEXT PRIMARY KEY, -- indexed because primary key
     not_before INTEGER NOT NULL,
     not_after INTEGER NOT NULL,

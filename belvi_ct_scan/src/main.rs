@@ -118,7 +118,7 @@ impl Ctx {
         debug!("SQLite version is {}", rusqlite::version());
         let sqlite_conn = rusqlite::Connection::open(db_path).expect("couldn't open DB");
         sqlite_conn
-            .execute(include_str!("init_db.sql"), [])
+            .execute_batch(include_str!("init_db.sql"))
             .unwrap();
         Ctx {
             data_path,

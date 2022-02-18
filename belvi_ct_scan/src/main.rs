@@ -104,6 +104,7 @@ struct Ctx {
     log_list: LogList,
     fetcher: Fetcher,
     start_time: DateTime<Utc>,
+    sqlite_conn: rusqlite::Connection,
 }
 
 impl Ctx {
@@ -111,12 +112,19 @@ impl Ctx {
         let mut args = env::args_os();
         let data_path: PathBuf = args.nth(1).unwrap().into();
         let fetch_state_path = data_path.clone().join("state.json");
+        let db_path = data_path.clone().join("data.db");
         let start_time = Utc::now();
         debug!("Start time is {:?}", start_time);
+        debug!("SQLite version is {}", rusqlite::version());
+        let sqlite_conn = rusqlite::Connection::open(db_path).expect("couldn't open DB");
+        sqlite_conn
+            .execute(include_str!("init_db.sql"), [])
+            .unwrap();
         Ctx {
             data_path,
             fetch_state_path,
             start_time,
+            sqlite_conn,
             log_list: LogList::google(),
             fetcher: Fetcher::new(),
         }

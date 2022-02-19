@@ -109,7 +109,7 @@ impl TimestampedEntry {
         let entry_type =
             u16::from_be_bytes(v[8..=9].try_into().expect("slice is always right length"));
         let log_entry = match entry_type {
-            // just skip the next 4 bytes?
+            // just skip the next 3 bytes?
             0 => LogEntry::X509(v[13..].to_vec()),
             1 => {
                 if v.len() <= 43 {

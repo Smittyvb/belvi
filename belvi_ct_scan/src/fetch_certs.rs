@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::{Ctx, FetchState, LogId};
+use crate::{log_data::LogEntry, Ctx, FetchState, LogId};
 use bcder::decode::Constructed;
 use belvi_log_list::Log;
 use log::{info, trace, warn};
@@ -89,30 +89,32 @@ impl<'ctx> FetchState {
                     for (idx, entry) in entries.into_iter().enumerate() {
                         let idx: u64 = idx as u64 + start;
                         let log_timestamp = entry.leaf_input.timestamped_entry.timestamp;
-                        let cert_bytes = entry.leaf_input.timestamped_entry.log_entry.inner_cert();
-                        if let crate::log_data::LogEntry::Precert {
-                            issuer_key_hash,
-                            ref tbs_certificate,
-                        } = entry.leaf_input.timestamped_entry.log_entry
-                        {
+                        let log_entry = &entry.leaf_input.timestamped_entry.log_entry;
+                        let cert_bytes = log_entry.inner_cert();
+                        let (cert_type, cert) = if let LogEntry::X509(cert) = log_entry {
+                            let cert: x509_certificate::rfc5280::Certificate =
+                                x509_certificate::X509Certificate::from_der(cert)
+                                    .unwrap()
+                                    .into();
+                            ("cert", cert.tbs_certificate)
                         } else {
-                            continue; // only precerts for now
-                        }
-                        // let cert =
-                        //     x509_certificate::rfc5280::TbsCertificate::from_der(cert_bytes)
-                        //         .expect("invalid cert in log");
-                        let cert =
-                            Constructed::decode(cert_bytes.as_ref(), bcder::Mode::Der, |cons| {
-                                x509_certificate::rfc5280::TbsCertificate::take_from(cons)
-                            })
+                            let cert = Constructed::decode(
+                                cert_bytes.as_ref(),
+                                bcder::Mode::Der,
+                                |cons| x509_certificate::rfc5280::TbsCertificate::take_from(cons),
+                            )
                             .expect("invalid cert in log");
+                            ("precert", cert)
+                        };
+
                         let validity = &cert.validity;
                         let not_before = validity.not_before.clone();
                         let not_after = validity.not_after.clone();
                         info!(
-                            "idx {} of \"{}\": cert with ts {}, valid from {:?} to {:?}",
+                            "idx {} of \"{}\": {} with ts {}, valid from {:?} to {:?}",
                             idx,
                             log.description,
+                            cert_type,
                             log_timestamp,
                             not_before.as_ref(),
                             not_after.as_ref()

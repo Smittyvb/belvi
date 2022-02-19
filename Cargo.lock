@@ -95,6 +95,7 @@ name = "belvi_ct_scan"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "bcder",
  "belvi_log_list",
  "chrono",
  "env_logger",

@@ -115,6 +115,8 @@ impl TimestampedEntry {
                 if v.len() <= 43 {
                     return Err(CTParseError::TimestampedEntryTooShort);
                 };
+                assert!(v[v.len() - 1] == 0, "TODO: extensions");
+                assert!(v[v.len() - 2] == 0, "TODO: extensions");
                 LogEntry::Precert {
                     issuer_key_hash: v[10..=41].try_into().expect("slice is always right length"),
                     // just skip the next 4 bytes?

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use chrono::{DateTime, Utc};
 use log::{debug, info, warn};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::PathBuf};
 
@@ -48,14 +49,21 @@ impl Fetcher {
         start: u64,
         end: u64,
     ) -> Result<Vec<GetEntriesItem>, reqwest::Error> {
-        let resp_text = self
+        let resp = self
             .client
             .get(log.get_entries_url(start, end))
             .send()
-            .await?
-            .text()
             .await?;
-        Ok(GetEntriesItem::parse(&resp_text).unwrap())
+        if resp.status() != StatusCode::OK {
+            // TODO: proper error handling
+            panic!(
+                "bad resp status {}: {}",
+                resp.status().as_str(),
+                resp.text().await?
+            );
+        } else {
+            Ok(GetEntriesItem::parse(&resp.text().await?).unwrap())
+        }
     }
 }
 
@@ -167,7 +175,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
     for log in active_logs {
-        dbg!(fetch_state.next_batch(&ctx, LogId(log.log_id.clone())));
         fetch_state.fetch_next_batch(&mut ctx, &log).await;
     }
 

@@ -159,14 +159,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     info!("Starting Belvi fetcher");
 
-    let ctx = Ctx::from_env();
+    let mut ctx = Ctx::from_env();
     let mut fetch_state = FetchState::new_sync(&ctx);
 
     fetch_state.update_sths(&ctx).await;
     fetch_state.save(&ctx).await;
 
-    for log in ctx.active_logs() {
+    let active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
+    for log in active_logs {
         dbg!(fetch_state.next_batch(&ctx, LogId(log.log_id.clone())));
+        fetch_state.fetch_next_batch(&mut ctx, &log).await;
     }
 
     Ok(())

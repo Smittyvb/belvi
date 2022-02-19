@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::{Ctx, FetchState, LogId};
+use belvi_log_list::Log;
+use log::{info, trace, warn};
 use std::cmp::Ordering;
 
 /// Initially request certificates in batches of this size.
@@ -9,7 +11,7 @@ const FETCHES_FOR_SMALLER_PAGES: u64 = 10;
 /// We always want at least the last N certs for every log.
 const MIN_HISTORY: u64 = 5000;
 
-impl FetchState {
+impl<'ctx> FetchState {
     /// Returns the start and end index (inclusive) of the entries to retrieve next.
     /// The return value can be passed directly to the get-entries endpoint. `None` indicates
     /// nothing should be fetched. The return value will be adjacent to the current fetched
@@ -61,6 +63,41 @@ impl FetchState {
                 state.sth.tree_size.saturating_sub(page_size),
                 state.sth.tree_size,
             ))
+        }
+    }
+
+    pub async fn fetch_next_batch(&self, ctx: &mut Ctx, log: &Log) {
+        let id = LogId(log.log_id.clone());
+        if let Some((start, end)) = self.next_batch(ctx, id.clone()) {
+            assert!(start <= end);
+            match ctx.fetcher.fetch_entries(log, start, end).await {
+                Ok(entries) => {
+                    assert!(
+                        entries.len() != 0,
+                        "CT log sent empty response to get-entries"
+                    );
+                    let transient_entry = ctx.log_transient.entry(id).or_default();
+                    transient_entry.fetches += 1;
+                    transient_entry.highest_page_size = transient_entry
+                        .highest_page_size
+                        .max(entries.len().try_into().expect(">64 bit?"));
+                    let stmt = ctx.sqlite_conn.prepare_cached(
+                        "INSERT INTO domain_certs (domain, not_before, not_after, leaf_hash, extra_hash) VALUES (?, ?, ?, ?, ?)"
+                    ).unwrap();
+                    for (idx, entry) in entries.into_iter().enumerate() {
+                        let idx: u64 = idx as u64 + start;
+                        let timestamp = entry.leaf_input.timestamped_entry.timestamp;
+                        info!("got cert with timestamp {} at {}", timestamp, idx);
+                        // TODO: add to DB and store cert
+                    }
+                }
+                Err(err) => warn!(
+                    "Failed to fetch certs for \"{}\" (range: {}-{}): {:?}",
+                    log.description, start, end, err
+                ),
+            }
+        } else {
+            trace!("Already updated certs for \"{}\"", log.description);
         }
     }
 }

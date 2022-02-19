@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS domain_certs (
     domain TEXT PRIMARY KEY, -- indexed because primary key
     not_before INTEGER NOT NULL,
     not_after INTEGER NOT NULL,
-    data_hash BLOB NOT NULL
+    leaf_hash BLOB NOT NULL,
+    extra_hash BLOB NUT NULL
 ); -- WITH ROWID
 
 -- CONFIGURE SQLITE --

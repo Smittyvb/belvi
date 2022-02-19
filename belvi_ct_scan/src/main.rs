@@ -4,6 +4,7 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env, fs, path::PathBuf};
 
+mod fetch_certs;
 pub mod log_data;
 mod update_sths;
 
@@ -104,7 +105,23 @@ struct Ctx {
     log_list: LogList,
     fetcher: Fetcher,
     start_time: DateTime<Utc>,
+    log_transient: HashMap<LogId, LogTransient>,
     sqlite_conn: rusqlite::Connection,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct LogTransient {
+    fetches: u64,
+    highest_page_size: u64,
+}
+
+impl Default for LogTransient {
+    fn default() -> Self {
+        Self {
+            fetches: 0,
+            highest_page_size: u64::MAX,
+        }
+    }
 }
 
 impl Ctx {
@@ -125,9 +142,15 @@ impl Ctx {
             fetch_state_path,
             start_time,
             sqlite_conn,
+            log_transient: HashMap::new(),
             log_list: LogList::google(),
             fetcher: Fetcher::new(),
         }
+    }
+    fn active_logs(&self) -> impl Iterator<Item = &Log> {
+        self.log_list
+            .logs()
+            .filter(|log| log.has_active_certs(self.start_time))
     }
 }
 
@@ -141,6 +164,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     fetch_state.update_sths(&ctx).await;
     fetch_state.save(&ctx).await;
+
+    for log in ctx.active_logs() {
+        dbg!(fetch_state.next_batch(&ctx, LogId(log.log_id.clone())));
+    }
 
     Ok(())
 }

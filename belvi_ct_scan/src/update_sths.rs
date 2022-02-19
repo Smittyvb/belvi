@@ -5,12 +5,8 @@ use log::{debug, error, info, trace};
 impl FetchState {
     pub async fn update_sths(&mut self, ctx: &Ctx) {
         info!("Fetching all log STHs");
-        let logs = ctx
-            .log_list
-            .logs()
-            .filter(|log| log.has_active_certs(ctx.start_time));
         // TODO: in parallel
-        for log in logs {
+        for log in ctx.active_logs() {
             let new_sth = ctx
                 .fetcher
                 .fetch_sth(log)

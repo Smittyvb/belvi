@@ -67,10 +67,10 @@ impl<'ctx> FetchState {
         }
     }
 
-    pub async fn fetch_next_batch(&self, ctx: &mut Ctx, log: &Log) {
+    pub async fn fetch_next_batch(&mut self, ctx: &mut Ctx, log: &Log) {
         info!("Fetching batch of certs from \"{}\"", log.description);
         let id = LogId(log.log_id.clone());
-        if let Some((start, end)) = self.next_batch(ctx, id.clone()) {
+        if let Some((start, end)) = dbg!(self.next_batch(ctx, id.clone())) {
             assert!(start <= end);
             match ctx.fetcher.fetch_entries(log, start, end).await {
                 Ok(entries) => {
@@ -78,7 +78,8 @@ impl<'ctx> FetchState {
                         entries.len() != 0,
                         "CT log sent empty response to get-entries"
                     );
-                    let transient_entry = ctx.log_transient.entry(id).or_default();
+                    let end = start + entries.len() as u64; // update requested end to actual end
+                    let transient_entry = ctx.log_transient.entry(id.clone()).or_default();
                     transient_entry.fetches += 1;
                     transient_entry.highest_page_size = transient_entry
                         .highest_page_size
@@ -120,8 +121,26 @@ impl<'ctx> FetchState {
                             not_after.as_ref()
                         );
                         // TODO: add to DB and store cert
-                        // TODO: adjust log_states
                     }
+                    // adjust log_states
+                    let log_state = self.log_states.get_mut(&id).expect("no data for log");
+                    // start, end
+                    let (new_start, new_end) =
+                        if let Some((prev_start, prev_end)) = log_state.fetched_to {
+                            if start == (prev_end + 1) {
+                                // going forward in time
+                                (prev_start, end)
+                            } else {
+                                // going backwards in time
+                                assert!(end == (prev_start - 1));
+                                (start, prev_end)
+                            }
+                        } else {
+                            // first fetch
+                            (start, end)
+                        };
+                    assert!(new_end > new_start);
+                    log_state.fetched_to = Some((new_start, new_end));
                 }
                 Err(err) => warn!(
                     "Failed to fetch certs for \"{}\" (range: {}-{}): {:?}",

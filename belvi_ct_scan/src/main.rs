@@ -178,5 +178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         fetch_state.fetch_next_batch(&mut ctx, &log).await;
     }
 
+    fetch_state.save(&ctx).await;
+
     Ok(())
 }

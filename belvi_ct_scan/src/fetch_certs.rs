@@ -5,7 +5,7 @@ use bcder::{
     Tag,
 };
 use belvi_log_list::Log;
-use log::{info, trace, warn};
+use log::{debug, info, trace, warn};
 use std::{cmp::Ordering, collections::BTreeSet};
 use x509_certificate::rfc5280::TbsCertificate;
 
@@ -168,7 +168,7 @@ impl<'ctx> FetchState {
     pub async fn fetch_next_batch(&mut self, ctx: &mut Ctx, log: &Log) {
         info!("Fetching batch of certs from \"{}\"", log.description);
         let id = LogId(log.log_id.clone());
-        if let Some((start, end)) = dbg!(self.next_batch(ctx, id.clone())) {
+        if let Some((start, end)) = self.next_batch(ctx, id.clone()) {
             assert!(start <= end);
             match ctx.fetcher.fetch_entries(log, start, end).await {
                 Ok(entries) => {
@@ -233,7 +233,7 @@ impl<'ctx> FetchState {
                         let validity = &cert.validity;
                         let not_before = validity.not_before.clone();
                         let not_after = validity.not_after.clone();
-                        info!(
+                        trace!(
                             "idx {} of \"{}\": {} with ts {}, valid from {:?} to {:?}",
                             idx,
                             log.description,
@@ -258,6 +258,7 @@ impl<'ctx> FetchState {
                                 .expect("failed to insert domain");
                         }
                     }
+                    debug!("Fetched {}-{} from \"{}\"", start, end, log.description);
                     // adjust log_states
                     let log_state = self.log_states.get_mut(&id).expect("no data for log");
                     let (new_start, new_end) =

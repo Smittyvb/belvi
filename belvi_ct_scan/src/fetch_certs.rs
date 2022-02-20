@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::{log_data::LogEntry, Ctx, FetchState, LogId};
-use bcder::{decode::Constructed, OctetString};
+use bcder::{
+    decode::{self, Constructed, Content},
+    Ia5String,
+};
 use belvi_log_list::Log;
 use log::{info, trace, warn};
 use std::{cmp::Ordering, collections::BTreeSet};
@@ -148,24 +151,31 @@ impl<'ctx> FetchState {
                                         ext.value.to_bytes(),
                                         bcder::Mode::Ber,
                                         |cons| {
-                                            let mut doms = Vec::new();
-                                            loop {
-                                                match OctetString::take_from(cons) {
-                                                    Ok(val) => doms.push(val),
-                                                    Err(bcder::decode::Error::Malformed) => break,
-                                                    Err(bcder::decode::Error::Unimplemented) => {
-                                                        return Err(
-                                                            bcder::decode::Error::Unimplemented,
-                                                        )
+                                            cons.take_sequence(|subcons| {
+                                                let mut doms = Vec::new();
+                                                loop {
+                                                    let next_dom =
+                                                        subcons.take_value(|tag, content| {
+                                                            match content {
+                                                                Content::Primitive(prim) => {
+                                                                    Ok(prim.take_all()?.to_vec())
+                                                                }
+                                                                _ => Err(decode::Error::Malformed),
+                                                            }
+                                                        });
+                                                    if let Ok(dom) = next_dom {
+                                                        doms.push(dom);
+                                                    } else {
+                                                        break;
                                                     }
                                                 }
-                                            }
-                                            Ok(doms)
+                                                Ok(doms)
+                                            })
                                         },
                                     );
                                     if let Ok(doms) = doms {
                                         for dom in doms {
-                                            domains.insert(dom.to_bytes().to_vec());
+                                            domains.insert(dom);
                                         }
                                     } else {
                                         warn!("Cert has invalid subjectAltNames extension");
@@ -219,7 +229,13 @@ impl<'ctx> FetchState {
                             // first fetch
                             (start, end)
                         };
-                    assert!(new_end > new_start, "new endpoint past new startpoint, new: {}-{}, old: {:?}", new_start, new_end, log_state.fetched_to);
+                    assert!(
+                        new_end > new_start,
+                        "new endpoint past new startpoint, new: {}-{}, old: {:?}",
+                        new_start,
+                        new_end,
+                        log_state.fetched_to
+                    );
                     log_state.fetched_to = Some((new_start, new_end));
                 }
                 Err(err) => warn!(

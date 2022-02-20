@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::{log_data::LogEntry, Ctx, FetchState, LogId};
-use bcder::decode::{self, Constructed, Content};
+use bcder::{
+    decode::{self, Constructed, Content},
+    Tag,
+};
 use belvi_log_list::Log;
 use log::{info, trace, warn};
 use std::{cmp::Ordering, collections::BTreeSet};
@@ -30,6 +33,32 @@ fn ber_to_string(bytes: bytes::Bytes) -> Vec<u8> {
     }
 }
 
+fn take_tagged_ber(cons: &mut Constructed<bytes::Bytes>) -> Result<Vec<u8>, bcder::decode::Error> {
+    cons.take_value(|tag, content| {
+        match content {
+            Content::Primitive(prim) => {
+                let bytes = prim.take_all()?;
+                // tag can be from 0-8: https://datatracker.ietf.org/doc/html/rfc5280#page-128
+                // in practice, almost always a DNS name
+                // TODO: support IP addresses, tagged with CTX_7
+                if
+                // email
+                tag == Tag::CTX_1 ||
+                    // DNS name
+                    tag == Tag::CTX_2 ||
+                    // URI
+                    tag == Tag::CTX_6
+                {
+                    Ok(ber_to_string(bytes))
+                } else {
+                    Err(decode::Error::Unimplemented)
+                }
+            }
+            _ => Err(decode::Error::Malformed),
+        }
+    })
+}
+
 fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
     let mut domains = BTreeSet::new();
     for subject in &**cert.subject {
@@ -38,12 +67,7 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
             if attr.typ.as_ref() == &[85, 4, 3] {
                 // domains.insert(ber_to_string((**attr.value).clone()));
                 let next_dom =
-                    Constructed::decode((**attr.value).clone(), bcder::Mode::Ber, |cons| {
-                        cons.take_value(|_tag, content| match content {
-                            Content::Primitive(prim) => Ok(ber_to_string(prim.take_all()?)),
-                            _ => Err(decode::Error::Malformed),
-                        })
-                    });
+                    Constructed::decode((**attr.value).clone(), bcder::Mode::Ber, take_tagged_ber);
                 if let Ok(dom) = next_dom {
                     domains.insert(dom);
                 }
@@ -58,14 +82,11 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
                     cons.take_sequence(|subcons| {
                         let mut doms = Vec::new();
                         loop {
-                            let next_dom = subcons.take_value(|_tag, content| match content {
-                                Content::Primitive(prim) => Ok(ber_to_string(prim.take_all()?)),
-                                _ => Err(decode::Error::Malformed),
-                            });
-                            if let Ok(dom) = next_dom {
-                                doms.push(dom);
-                            } else {
-                                break;
+                            // let next_dom = ;
+                            match take_tagged_ber(subcons) {
+                                Ok(dom) => doms.push(dom),
+                                Err(decode::Error::Malformed) => break,
+                                Err(decode::Error::Unimplemented) => {}
                             }
                         }
                         Ok(doms)
@@ -204,6 +225,9 @@ impl<'ctx> FetchState {
                         };
 
                         let domains = get_cert_domains(&cert);
+                        if domains.contains(&b"&".to_vec()) {
+                            panic!("{:#?}", cert);
+                        }
 
                         let validity = &cert.validity;
                         let not_before = validity.not_before.clone();
@@ -302,6 +326,25 @@ mod test {
         let mut expected = BTreeSet::new();
         expected.insert(b"*.gecko.me".to_vec());
         expected.insert(b"gecko.me".to_vec());
+        assert_eq!(domains, expected);
+    }
+
+    // haplorrhini.der
+    #[test]
+    fn haplorrhini_domains() {
+        let domains = get_cert_domains(
+            &x509_certificate::certificate::X509Certificate::from_der(include_bytes!(
+                "../../test_certs/haplorrhini.der"
+            ))
+            .unwrap()
+            .as_ref()
+            .tbs_certificate,
+        );
+        let mut expected = BTreeSet::new();
+        expected.insert(b"test1.http-01.production.haplorrhini.com".to_vec());
+        expected.insert(b"test2.http-01.production.haplorrhini.com".to_vec());
+        expected.insert(b"test3.http-01.production.haplorrhini.com".to_vec());
+        // TODO: ip address
         assert_eq!(domains, expected);
     }
 }

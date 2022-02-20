@@ -34,6 +34,7 @@ impl<'ctx> FetchState {
             MAX_PAGE_SIZE
         };
 
+        // start and end are both inclusive bounds!
         if let Some((cur_start, cur_end)) = state.fetched_to {
             match cur_end.cmp(&state.sth.tree_size) {
                 // we have got to the STH
@@ -54,14 +55,17 @@ impl<'ctx> FetchState {
                 Ordering::Less => Some((
                     // from the current end, fetch up to a page to get closer to the STH
                     cur_end + 1,
-                    state.sth.tree_size.min(cur_end + MAX_PAGE_SIZE + 1),
+                    state.sth.tree_size.min(cur_end + MAX_PAGE_SIZE),
                 )),
-                Ordering::Greater => panic!("impossible, cannot fetch past STH"),
+                Ordering::Greater => panic!(
+                    "impossible, cur_end, {} is past STH, {}",
+                    cur_end, state.sth.tree_size
+                ),
             }
         } else {
             // initial fetch: one page from the beginning
             Some((
-                state.sth.tree_size.saturating_sub(page_size),
+                state.sth.tree_size.saturating_sub(page_size - 1), // subtraction accounts for bounds inclusion
                 state.sth.tree_size,
             ))
         }
@@ -78,7 +82,17 @@ impl<'ctx> FetchState {
                         entries.len() != 0,
                         "CT log sent empty response to get-entries"
                     );
-                    let end = start + entries.len() as u64; // update requested end to actual end
+                    let new_end = start + entries.len() as u64 - 1; // update requested end to actual end
+                    assert!(
+                        new_end <= end,
+                        "CT log sent more certs than requested: asked for {}-{} ({} entries), got end of {} ({} entries)",
+                        start,
+                        end,
+                        end - start + 1, // add 1 since inclusive of bounds
+                        new_end,
+                        entries.len(),
+                    );
+                    let end = new_end;
                     let transient_entry = ctx.log_transient.entry(id.clone()).or_default();
                     transient_entry.fetches += 1;
                     transient_entry.highest_page_size = transient_entry

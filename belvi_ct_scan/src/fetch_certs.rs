@@ -26,6 +26,7 @@ fn ber_to_string(bytes: bytes::Bytes) -> Vec<u8> {
         }
         return Err(decode::Error::Malformed);
     });
+    // TODO: normalize
     if let Ok(str) = str_decode {
         str.to_vec()
     } else {

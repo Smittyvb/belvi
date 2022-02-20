@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::{log_data::LogEntry, Ctx, FetchState, LogId};
-use bcder::{
-    decode::{self, Constructed, Content},
-    Ia5String,
-};
+use bcder::decode::{self, Constructed, Content};
 use belvi_log_list::Log;
 use log::{info, trace, warn};
 use std::{cmp::Ordering, collections::BTreeSet};
+use x509_certificate::rfc5280::TbsCertificate;
 
 /// Initially request certificates in batches of this size.
 const MAX_PAGE_SIZE: u64 = 1000;
@@ -14,6 +12,77 @@ const MAX_PAGE_SIZE: u64 = 1000;
 const FETCHES_FOR_SMALLER_PAGES: u64 = 10;
 /// We always want at least the last N certs for every log.
 const MIN_HISTORY: u64 = 5000;
+
+fn ber_to_string(bytes: bytes::Bytes) -> Vec<u8> {
+    let str_decode = Constructed::decode(bytes.clone(), bcder::Mode::Ber, |cons| {
+        if let Ok(str) = bcder::Utf8String::take_from(cons) {
+            return Ok(str.to_bytes());
+        }
+        if let Ok(str) = bcder::Ia5String::take_from(cons) {
+            return Ok(str.to_bytes());
+        }
+        return Err(decode::Error::Malformed);
+    });
+    if let Ok(str) = str_decode {
+        str.to_vec()
+    } else {
+        bytes.to_vec()
+    }
+}
+
+fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
+    let mut domains = BTreeSet::new();
+    for subject in &**cert.subject {
+        for attr in &**subject {
+            // 2.5.4.3 is OID for commonName
+            if attr.typ.as_ref() == &[85, 4, 3] {
+                // domains.insert(ber_to_string((**attr.value).clone()));
+                let next_dom =
+                    Constructed::decode((**attr.value).clone(), bcder::Mode::Ber, |cons| {
+                        cons.take_value(|_tag, content| match content {
+                            Content::Primitive(prim) => Ok(ber_to_string(prim.take_all()?)),
+                            _ => Err(decode::Error::Malformed),
+                        })
+                    });
+                if let Ok(dom) = next_dom {
+                    domains.insert(dom);
+                }
+            }
+        }
+    }
+    if let Some(exts) = &cert.extensions {
+        for ext in &**exts {
+            // 2.5.29.17  is OID for subjectAltName
+            if ext.id.as_ref() == &[85, 29, 17] {
+                let doms = Constructed::decode(ext.value.to_bytes(), bcder::Mode::Ber, |cons| {
+                    cons.take_sequence(|subcons| {
+                        let mut doms = Vec::new();
+                        loop {
+                            let next_dom = subcons.take_value(|_tag, content| match content {
+                                Content::Primitive(prim) => Ok(ber_to_string(prim.take_all()?)),
+                                _ => Err(decode::Error::Malformed),
+                            });
+                            if let Ok(dom) = next_dom {
+                                doms.push(dom);
+                            } else {
+                                break;
+                            }
+                        }
+                        Ok(doms)
+                    })
+                });
+                if let Ok(doms) = doms {
+                    for dom in doms {
+                        domains.insert(dom);
+                    }
+                } else {
+                    warn!("Cert has invalid subjectAltNames extension");
+                }
+            }
+        }
+    }
+    domains
+}
 
 impl<'ctx> FetchState {
     /// Returns the start and end index (inclusive) of the entries to retrieve next.
@@ -134,55 +203,7 @@ impl<'ctx> FetchState {
                             ("precert", cert)
                         };
 
-                        let mut domains = BTreeSet::new();
-                        for subject in &**cert.subject {
-                            for attr in &**subject {
-                                // 2.5.4.3 is OID for commonName
-                                if attr.typ.as_ref() == &[85, 4, 3] {
-                                    domains.insert((***attr.value).to_vec());
-                                }
-                            }
-                        }
-                        if let Some(exts) = cert.extensions {
-                            for ext in &*exts {
-                                // 2.5.29.17  is OID for subjectAltName
-                                if ext.id.as_ref() == &[85, 29, 17] {
-                                    let doms = Constructed::decode(
-                                        ext.value.to_bytes(),
-                                        bcder::Mode::Ber,
-                                        |cons| {
-                                            cons.take_sequence(|subcons| {
-                                                let mut doms = Vec::new();
-                                                loop {
-                                                    let next_dom =
-                                                        subcons.take_value(|tag, content| {
-                                                            match content {
-                                                                Content::Primitive(prim) => {
-                                                                    Ok(prim.take_all()?.to_vec())
-                                                                }
-                                                                _ => Err(decode::Error::Malformed),
-                                                            }
-                                                        });
-                                                    if let Ok(dom) = next_dom {
-                                                        doms.push(dom);
-                                                    } else {
-                                                        break;
-                                                    }
-                                                }
-                                                Ok(doms)
-                                            })
-                                        },
-                                    );
-                                    if let Ok(doms) = doms {
-                                        for dom in doms {
-                                            domains.insert(dom);
-                                        }
-                                    } else {
-                                        warn!("Cert has invalid subjectAltNames extension");
-                                    }
-                                }
-                            }
-                        }
+                        let domains = get_cert_domains(&cert);
 
                         let validity = &cert.validity;
                         let not_before = validity.not_before.clone();
@@ -246,5 +267,42 @@ impl<'ctx> FetchState {
         } else {
             trace!("Already updated certs for \"{}\"", log.description);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn ttw_domains() {
+        let domains = get_cert_domains(
+            &x509_certificate::certificate::X509Certificate::from_der(include_bytes!(
+                "../../test_certs/ttw.der"
+            ))
+            .unwrap()
+            .as_ref()
+            .tbs_certificate,
+        );
+        let mut expected = BTreeSet::new();
+        expected.insert(b"*.smitop.com".to_vec());
+        expected.insert(b"smitop.com".to_vec());
+        expected.insert(b"sni.cloudflaressl.com".to_vec());
+        assert_eq!(domains, expected);
+    }
+
+    #[test]
+    fn geckome_domains() {
+        let domains = get_cert_domains(
+            &x509_certificate::certificate::X509Certificate::from_der(include_bytes!(
+                "../../test_certs/geckome.der"
+            ))
+            .unwrap()
+            .as_ref()
+            .tbs_certificate,
+        );
+        let mut expected = BTreeSet::new();
+        expected.insert(b"*.gecko.me".to_vec());
+        expected.insert(b"gecko.me".to_vec());
+        assert_eq!(domains, expected);
     }
 }

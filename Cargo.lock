@@ -98,6 +98,7 @@ dependencies = [
  "bcder",
  "belvi_hash",
  "belvi_log_list",
+ "bytes",
  "chrono",
  "env_logger",
  "log",

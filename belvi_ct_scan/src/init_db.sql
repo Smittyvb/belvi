@@ -6,19 +6,22 @@
 CREATE TABLE IF NOT EXISTS meta(
     k TEXT PRIMARY KEY,
     v TEXT
-);
+); -- WITH ROWID
 
 -- if schema is changed in future, an actual system for migrating the DB will be implemented
 -- for now, just assume we are always on the initial version
 INSERT OR REPLACE into meta (k, v) values ("migration", "1.0.0");
 
-CREATE TABLE IF NOT EXISTS domain_certs (
-    domain TEXT PRIMARY KEY, -- indexed because primary key
-    not_before INTEGER NOT NULL,
-    not_after INTEGER NOT NULL,
-    leaf_hash BLOB NOT NULL,
-    extra_hash BLOB NUT NULL
-); -- WITH ROWID
+CREATE TABLE IF NOT EXISTS certs (
+    leaf_hash BLOB PRIMARY KEY NOT NULL,
+    extra_hash BLOB NOT NULL,
+    ts NUMBER NOT NULL
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS domains (
+    domain TEXT PRIMARY KEY NOT NULL,
+    leaf_hash BLOB NOT NULL
+) WITHOUT ROWID;
 
 -- CONFIGURE SQLITE --
 PRAGMA journal_mode = WAL;

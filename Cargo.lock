@@ -96,6 +96,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "bcder",
+ "belvi_hash",
  "belvi_log_list",
  "chrono",
  "env_logger",
@@ -106,6 +107,13 @@ dependencies = [
  "serde_json",
  "tokio",
  "x509-certificate",
+]
+
+[[package]]
+name = "belvi_hash"
+version = "0.1.0"
+dependencies = [
+ "ring",
 ]
 
 [[package]]

@@ -4,4 +4,5 @@ members = [
     "belvi_ct_scan",
     "belvi_log_list",
     "belvi_render",
+    "belvi_hash",
 ]

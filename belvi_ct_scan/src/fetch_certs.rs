@@ -84,9 +84,18 @@ impl<'ctx> FetchState {
                     transient_entry.highest_page_size = transient_entry
                         .highest_page_size
                         .max(entries.len().try_into().expect(">64 bit?"));
-                    let stmt = ctx.sqlite_conn.prepare_cached(
-                        "INSERT INTO domain_certs (domain, not_before, not_after, leaf_hash, extra_hash) VALUES (?, ?, ?, ?, ?)"
-                    ).unwrap();
+                    let mut cert_insert = ctx
+                        .sqlite_conn
+                        .prepare_cached(
+                            "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash, ts) VALUES (?, ?, ?)",
+                        )
+                        .unwrap();
+                    let mut domain_insert = ctx
+                        .sqlite_conn
+                        .prepare_cached(
+                            "INSERT OR IGNORE INTO domains (leaf_hash, domain) VALUES (?, ?)",
+                        )
+                        .unwrap();
                     for (idx, entry) in entries.into_iter().enumerate() {
                         let idx: u64 = idx as u64 + start;
                         let log_timestamp = entry.leaf_input.timestamped_entry.timestamp;
@@ -120,7 +129,16 @@ impl<'ctx> FetchState {
                             not_before.as_ref(),
                             not_after.as_ref()
                         );
-                        // TODO: add to DB and store cert
+                        // TODO: store cert
+                        let leaf_hash = belvi_hash::db(log_entry.inner_cert());
+                        let extra_hash = belvi_hash::db(&entry.extra_data);
+                        cert_insert
+                            .execute(rusqlite::params![
+                                leaf_hash.to_vec(),
+                                extra_hash.to_vec(),
+                                log_timestamp
+                            ])
+                            .expect("failed to insert cert");
                     }
                     // adjust log_states
                     let log_state = self.log_states.get_mut(&id).expect("no data for log");

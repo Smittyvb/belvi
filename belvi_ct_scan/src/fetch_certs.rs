@@ -276,7 +276,7 @@ impl<'ctx> FetchState {
                             (start, end)
                         };
                     assert!(
-                        new_end > new_start,
+                        new_end >= new_start,
                         "new endpoint past new startpoint, new: {}-{}, old: {:?}",
                         new_start,
                         new_end,

@@ -235,7 +235,6 @@ impl<'ctx> FetchState {
                     }
                     // adjust log_states
                     let log_state = self.log_states.get_mut(&id).expect("no data for log");
-                    // start, end
                     let (new_start, new_end) =
                         if let Some((prev_start, prev_end)) = log_state.fetched_to {
                             if start == (prev_end + 1) {

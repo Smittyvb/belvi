@@ -219,7 +219,7 @@ impl<'ctx> FetchState {
                             // first fetch
                             (start, end)
                         };
-                    assert!(new_end > new_start);
+                    assert!(new_end > new_start, "new endpoint past new startpoint, new: {}-{}, old: {:?}", new_start, new_end, log_state.fetched_to);
                     log_state.fetched_to = Some((new_start, new_end));
                 }
                 Err(err) => warn!(

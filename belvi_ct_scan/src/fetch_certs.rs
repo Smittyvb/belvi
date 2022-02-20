@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::{log_data::LogEntry, Ctx, FetchState, LogId};
-use bcder::decode::Constructed;
+use bcder::{decode::Constructed, OctetString};
 use belvi_log_list::Log;
 use log::{info, trace, warn};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::BTreeSet};
 
 /// Initially request certificates in batches of this size.
 const MAX_PAGE_SIZE: u64 = 1000;
@@ -131,6 +131,49 @@ impl<'ctx> FetchState {
                             ("precert", cert)
                         };
 
+                        let mut domains = BTreeSet::new();
+                        for subject in &**cert.subject {
+                            for attr in &**subject {
+                                // 2.5.4.3 is OID for commonName
+                                if attr.typ.as_ref() == &[85, 4, 3] {
+                                    domains.insert((***attr.value).to_vec());
+                                }
+                            }
+                        }
+                        if let Some(exts) = cert.extensions {
+                            for ext in &*exts {
+                                // 2.5.29.17  is OID for subjectAltName
+                                if ext.id.as_ref() == &[85, 29, 17] {
+                                    let doms = Constructed::decode(
+                                        ext.value.to_bytes(),
+                                        bcder::Mode::Ber,
+                                        |cons| {
+                                            let mut doms = Vec::new();
+                                            loop {
+                                                match OctetString::take_from(cons) {
+                                                    Ok(val) => doms.push(val),
+                                                    Err(bcder::decode::Error::Malformed) => break,
+                                                    Err(bcder::decode::Error::Unimplemented) => {
+                                                        return Err(
+                                                            bcder::decode::Error::Unimplemented,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Ok(doms)
+                                        },
+                                    );
+                                    if let Ok(doms) = doms {
+                                        for dom in doms {
+                                            domains.insert(dom.to_bytes().to_vec());
+                                        }
+                                    } else {
+                                        warn!("Cert has invalid subjectAltNames extension");
+                                    }
+                                }
+                            }
+                        }
+
                         let validity = &cert.validity;
                         let not_before = validity.not_before.clone();
                         let not_after = validity.not_after.clone();
@@ -153,6 +196,11 @@ impl<'ctx> FetchState {
                                 log_timestamp
                             ])
                             .expect("failed to insert cert");
+                        for domain in domains {
+                            domain_insert
+                                .execute([leaf_hash.to_vec(), domain])
+                                .expect("failed to insert domain");
+                        }
                     }
                     // adjust log_states
                     let log_state = self.log_states.get_mut(&id).expect("no data for log");

@@ -1,1 +1,1 @@
-This file contains certificates from a certificate transparency log, which are generally not copyright-eligible.
+This file contains a publically available certificate from a website. Such certificates are generally not copyright-eligible.

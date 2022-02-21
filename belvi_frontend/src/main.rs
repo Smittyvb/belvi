@@ -23,7 +23,9 @@ thread_local! {
 async fn get_root() -> impl IntoResponse {
     DB_CONN.with(|db| {
         let count: usize = db
-            .query_row("SELECT count(domain) FROM domains", [], |row| row.get(0))
+            .prepare_cached("SELECT count(domain) FROM domains")
+            .unwrap()
+            .query_row([], |row| row.get(0))
             .unwrap();
         (
             StatusCode::OK,

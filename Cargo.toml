@@ -5,4 +5,5 @@ members = [
     "belvi_log_list",
     "belvi_render",
     "belvi_hash",
+    "belvi_frontend",
 ]

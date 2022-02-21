@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
-use axum::{routing::get, Router};
+use axum::{
+    http::StatusCode,
+    response::{Headers, IntoResponse},
+    routing::get,
+    Router,
+};
 use rusqlite::{Connection, OpenFlags};
 use std::{env, path::PathBuf};
 
@@ -15,12 +20,19 @@ thread_local! {
     };
 }
 
-async fn get_root() -> String {
+async fn get_root() -> impl IntoResponse {
     DB_CONN.with(|db| {
         let count: usize = db
             .query_row("SELECT count(domain) FROM domains", [], |row| row.get(0))
             .unwrap();
-        format!("Currently {} certs", count)
+        (
+            StatusCode::OK,
+            Headers([
+                ("Server", "belvi_frontend/1.0"),
+                ("Content-Type", "text/html"),
+            ]),
+            format!("Total certs: {}", count),
+        )
     })
 }
 

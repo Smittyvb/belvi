@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS certs (
     ts NUMBER NOT NULL
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS domains (
+    -- TODO: also store reverse of domain to make *.com queries possible with < and >
     domain TEXT NOT NULL,
     leaf_hash BLOB NOT NULL
 ); -- WITH ROWID

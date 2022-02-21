@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS certs (
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS domains (
+    -- TODO: multiple certs for same domain
     domain TEXT PRIMARY KEY NOT NULL,
     leaf_hash BLOB NOT NULL
 ) WITHOUT ROWID;

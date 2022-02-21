@@ -9,6 +9,8 @@ use axum::{
 use rusqlite::{Connection, OpenFlags};
 use std::{env, path::PathBuf};
 
+const PRODUCT_NAME: &str = "Belvi";
+
 // TODO: use tokio::task_local instead?
 thread_local! {
     static DB_CONN: Connection = {
@@ -33,7 +35,12 @@ async fn get_root() -> impl IntoResponse {
                 ("Server", "belvi_frontend/1.0"),
                 ("Content-Type", "text/html"),
             ]),
-            format!("Total certs: {}", count),
+            format!(
+                include_str!("tmpl/base.html"),
+                title = PRODUCT_NAME,
+                product_name = PRODUCT_NAME,
+                content = format!("{} certs", count)
+            ),
         )
     })
 }

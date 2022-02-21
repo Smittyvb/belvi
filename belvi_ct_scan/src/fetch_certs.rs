@@ -254,7 +254,10 @@ impl<'ctx> FetchState {
                             .expect("failed to insert cert");
                         for domain in domains {
                             domain_insert
-                                .execute([leaf_hash.to_vec(), domain])
+                                .execute(rusqlite::params![
+                                    leaf_hash.to_vec(),
+                                    String::from_utf8_lossy(&domain)
+                                ])
                                 .expect("failed to insert domain");
                         }
                     }

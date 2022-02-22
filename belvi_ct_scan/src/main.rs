@@ -57,8 +57,11 @@ impl Fetcher {
         if resp.status() != StatusCode::OK {
             // TODO: proper error handling
             panic!(
-                "bad resp status {}: {}",
+                "bad resp status {} while fetching {}-{} from \"{}\": {}",
                 resp.status().as_str(),
+                start,
+                end,
+                log.description,
                 resp.text().await?
             );
         } else {

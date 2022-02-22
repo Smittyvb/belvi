@@ -14,7 +14,7 @@ INSERT OR REPLACE into meta (k, v) values ("migration", "1.0.0");
 CREATE TABLE IF NOT EXISTS certs (
     leaf_hash BLOB PRIMARY KEY NOT NULL, -- SHA256 of leaf data
     extra_hash BLOB NOT NULL, -- SHA256 of extra data
-    ts NUMBER NOT NULL -- log stamp of the first log seen in
+    ts NUMBER NOT NULL -- time the certificate was incorporated into the first log we saw this cert in
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS domains (
     -- TODO: also store reverse of domain to make *.com queries possible with < and >

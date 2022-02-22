@@ -128,9 +128,12 @@ impl<'ctx> FetchState {
             MAX_PAGE_SIZE
         };
 
+        // subtract 1 to account for 0-indexing
+        let tree_size = state.sth.tree_size.saturating_sub(1);
+
         // start and end are both inclusive bounds!
         if let Some((cur_start, cur_end)) = state.fetched_to {
-            match cur_end.cmp(&state.sth.tree_size) {
+            match cur_end.cmp(&tree_size) {
                 // we have got to the STH
                 Ordering::Equal => {
                     let desired_start = cur_end.saturating_sub(MIN_HISTORY);
@@ -149,18 +152,18 @@ impl<'ctx> FetchState {
                 Ordering::Less => Some((
                     // from the current end, fetch up to a page to get closer to the STH
                     cur_end + 1,
-                    state.sth.tree_size.min(cur_end + MAX_PAGE_SIZE),
+                    tree_size.min(cur_end + MAX_PAGE_SIZE),
                 )),
                 Ordering::Greater => panic!(
                     "impossible, cur_end, {} is past STH, {}",
-                    cur_end, state.sth.tree_size
+                    cur_end, tree_size
                 ),
             }
         } else {
             // initial fetch: one page from the beginning
             Some((
-                state.sth.tree_size.saturating_sub(page_size - 1), // subtraction accounts for bounds inclusion
-                state.sth.tree_size,
+                tree_size.saturating_sub(page_size - 1), // subtraction accounts for bounds inclusion
+                tree_size,
             ))
         }
     }

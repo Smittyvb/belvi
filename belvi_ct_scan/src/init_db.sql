@@ -4,6 +4,7 @@
 BEGIN;
 
 -- INITALIZE TABLES --
+-- once SQLite 3.37 (2021-11-27) is more widely deployed, make these strict tables
 CREATE TABLE IF NOT EXISTS meta(
     k TEXT PRIMARY KEY,
     v TEXT

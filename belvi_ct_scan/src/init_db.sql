@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS meta(
 INSERT OR REPLACE into meta (k, v) values ("migration", "1.0.0");
 CREATE TABLE IF NOT EXISTS certs (
     leaf_hash BLOB PRIMARY KEY NOT NULL, -- SHA256 of leaf data
-    extra_hash BLOB NOT NULL -- SHA256 of extra data
+    extra_hash BLOB NOT NULL, -- SHA256 of extra data
+    not_before INTEGER NOT NULL,
+    not_after INTEGER NOT NULL
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS log_entries (
     leaf_hash BLOB NOT NULL, -- SHA256 of leaf data

@@ -7,7 +7,7 @@ use bcder::{
 use belvi_log_list::Log;
 use log::{debug, info, trace, warn};
 use std::{cmp::Ordering, collections::BTreeSet};
-use x509_certificate::rfc5280::TbsCertificate;
+use x509_certificate::{asn1time::Time, rfc5280::TbsCertificate};
 
 /// Initially request certificates in batches of this size.
 const MAX_PAGE_SIZE: u64 = 1000;
@@ -106,6 +106,14 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
     domains
 }
 
+fn time_to_unix(time: Time) -> i64 {
+    match time {
+        Time::UtcTime(time) => *time,
+        Time::GeneralTime(time) => *time,
+    }
+    .timestamp()
+}
+
 impl<'ctx> FetchState {
     /// Returns the start and end index (inclusive) of the entries to retrieve next.
     /// The return value can be passed directly to the get-entries endpoint. `None` indicates
@@ -198,7 +206,7 @@ impl<'ctx> FetchState {
                     let mut cert_insert = ctx
                         .sqlite_conn
                         .prepare_cached(
-                            "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash) VALUES (?, ?)",
+                            "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash, not_before, not_after) VALUES (?, ?, ?, ?)",
                         )
                         .unwrap();
                     let mut entry_insert = ctx
@@ -253,7 +261,12 @@ impl<'ctx> FetchState {
                         let leaf_hash = belvi_hash::db(log_entry.inner_cert()).to_vec();
                         let extra_hash = belvi_hash::db(&entry.extra_data);
                         cert_insert
-                            .execute(rusqlite::params![leaf_hash, extra_hash.to_vec()])
+                            .execute(rusqlite::params![
+                                leaf_hash,
+                                extra_hash.to_vec(),
+                                time_to_unix(not_before),
+                                time_to_unix(not_after)
+                            ])
                             .expect("failed to insert cert");
                         entry_insert
                             .execute(rusqlite::params![leaf_hash, id.num(), log_timestamp])

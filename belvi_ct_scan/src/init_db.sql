@@ -25,12 +25,13 @@ CREATE TABLE IF NOT EXISTS domains (
 -- CREATE INDICIES --
 CREATE INDEX IF NOT EXISTS idx_domains_domain1 ON domains (domain);
 
+COMMIT;
+
 -- CONFIGURE SQLITE --
 PRAGMA journal_mode = WAL;
 PRAGMA encoding = 'UTF-8';
 PRAGMA user_version = 1;
+PRAGMA case_sensitive_like = ON; -- by default LIKE ignores case
 
 -- OPTIMIZE DB --
 PRAGMA optimize;
-
-COMMIT;

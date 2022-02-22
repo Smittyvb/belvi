@@ -73,6 +73,15 @@ impl Fetcher {
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
 struct LogId(String);
 
+impl LogId {
+    pub fn num(&self) -> u32 {
+        let bytes: [u8; 4] = base64::decode(&self.0).expect("log ID not base64")[0..4]
+            .try_into()
+            .unwrap();
+        u32::from_le_bytes(bytes)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct FetchState {
     state_ver: u32,

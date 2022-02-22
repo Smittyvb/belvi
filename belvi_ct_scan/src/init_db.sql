@@ -14,9 +14,14 @@ CREATE TABLE IF NOT EXISTS meta(
 INSERT OR REPLACE into meta (k, v) values ("migration", "1.0.0");
 CREATE TABLE IF NOT EXISTS certs (
     leaf_hash BLOB PRIMARY KEY NOT NULL, -- SHA256 of leaf data
-    extra_hash BLOB NOT NULL, -- SHA256 of extra data
-    ts NUMBER NOT NULL -- time the certificate was incorporated into the first log we saw this cert in
+    extra_hash BLOB NOT NULL -- SHA256 of extra data
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS log_entries (
+    leaf_hash BLOB NOT NULL, -- SHA256 of leaf data
+    log_id NUMBER NOT NULL, -- ID of log
+    ts NUMBER NOT NULL, -- time the certificate was incorporated into the first log we saw this cert in
+    PRIMARY KEY (leaf_hash, log_id)
+);
 CREATE TABLE IF NOT EXISTS domains (
     -- TODO: also store reverse of domain to make *.com queries possible with < and >
     domain TEXT NOT NULL, -- normalized FQDN without trailing .

@@ -198,8 +198,12 @@ impl<'ctx> FetchState {
                     let mut cert_insert = ctx
                         .sqlite_conn
                         .prepare_cached(
-                            "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash, ts) VALUES (?, ?, ?)",
+                            "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash) VALUES (?, ?)",
                         )
+                        .unwrap();
+                    let mut entry_insert = ctx
+                        .sqlite_conn
+                        .prepare_cached("INSERT OR IGNORE INTO log_entries (leaf_hash, log_id, ts) VALUES (?, ?, ?)")
                         .unwrap();
                     let mut domain_insert = ctx
                         .sqlite_conn
@@ -246,19 +250,18 @@ impl<'ctx> FetchState {
                             not_after.as_ref()
                         );
                         // TODO: store cert
-                        let leaf_hash = belvi_hash::db(log_entry.inner_cert());
+                        let leaf_hash = belvi_hash::db(log_entry.inner_cert()).to_vec();
                         let extra_hash = belvi_hash::db(&entry.extra_data);
                         cert_insert
-                            .execute(rusqlite::params![
-                                leaf_hash.to_vec(),
-                                extra_hash.to_vec(),
-                                log_timestamp
-                            ])
+                            .execute(rusqlite::params![leaf_hash, extra_hash.to_vec()])
                             .expect("failed to insert cert");
+                        entry_insert
+                            .execute(rusqlite::params![leaf_hash, id.num(), log_timestamp])
+                            .expect("failed to insert entry");
                         for domain in domains {
                             domain_insert
                                 .execute(rusqlite::params![
-                                    leaf_hash.to_vec(),
+                                    leaf_hash,
                                     String::from_utf8_lossy(&domain)
                                 ])
                                 .expect("failed to insert domain");

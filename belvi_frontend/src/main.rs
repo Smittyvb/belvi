@@ -96,12 +96,13 @@ async fn get_root() -> impl IntoResponse {
                 title = PRODUCT_NAME,
                 product_name = PRODUCT_NAME,
                 content = format_args!(
-                    "<ul>{}</ul>",
+                    r#"<ul class="bvfront-cert-list">{}</ul>"#,
                     certs
                         .iter()
                         .map(CertData::render)
                         .fold(String::new(), |a, b| a + &b)
-                )
+                ),
+                css = include_str!("tmpl/base.css")
             ),
         )
     })

@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+body {
+    background: rgb(221, 249, 249);
+}
+
+.bvfront-cert-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.bvfront-cert-list > li {
+    border: 2px solid #006a6a;
+    margin-bottom: 1rem;
+    padding: 0.333rem;
+}

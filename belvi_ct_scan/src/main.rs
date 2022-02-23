@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use log::{debug, info, warn};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env, fs, path::PathBuf};
+use std::{collections::{HashMap, HashSet}, env, fs, path::PathBuf};
 
 mod fetch_certs;
 pub mod log_data;
@@ -186,12 +186,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fetch_state.save(&ctx).await;
 
     let mut active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
-    fastrand::shuffle(&mut active_logs);
-    for log in active_logs {
-        fetch_state.fetch_next_batch(&mut ctx, &log).await;
+    let mut checked_logs: HashSet<String> = HashSet::new();
+    while checked_logs.len() < active_logs.len() {
+        fastrand::shuffle(&mut active_logs);
+        for log in &active_logs {
+            if checked_logs.contains(&log.log_id) {
+                continue;
+            }
+            if let Some(count) = fetch_state.fetch_next_batch(&mut ctx, &log).await {
+                info!("Fetched {} certs from \"{}\"", count, log.description);
+            } else {
+                checked_logs.insert(log.log_id.clone());
+            }
+        }
+        fetch_state.save(&ctx).await;
     }
-
-    fetch_state.save(&ctx).await;
 
     Ok(())
 }

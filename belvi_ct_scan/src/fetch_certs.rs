@@ -176,7 +176,7 @@ impl<'ctx> FetchState {
         }
     }
 
-    pub async fn fetch_next_batch(&mut self, ctx: &mut Ctx, log: &Log) {
+    pub async fn fetch_next_batch(&mut self, ctx: &mut Ctx, log: &Log) -> Option<u64> {
         info!("Fetching batch of certs from \"{}\"", log.description);
         let id = LogId(log.log_id.clone());
         if let Some((start, end)) = self.next_batch(ctx, id.clone()) {
@@ -305,14 +305,19 @@ impl<'ctx> FetchState {
                         log_state.fetched_to
                     );
                     log_state.fetched_to = Some((new_start, new_end));
+                    Some(end - start + 1)
                 }
-                Err(err) => warn!(
-                    "Failed to fetch certs for \"{}\" (range: {}-{}): {:?}",
-                    log.description, start, end, err
-                ),
+                Err(err) => {
+                        warn!(
+                        "Failed to fetch certs for \"{}\" (range: {}-{}): {:?}",
+                        log.description, start, end, err
+                    );
+                    None
+                }
             }
         } else {
             trace!("Already updated certs for \"{}\"", log.description);
+            None
         }
     }
 }

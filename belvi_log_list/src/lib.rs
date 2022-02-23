@@ -10,21 +10,21 @@ mod log_list_test;
 
 type TreeSize = u64;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LogList {
     pub version: String,
     pub log_list_timestamp: String,
     pub operators: Vec<LogListOperator>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LogListOperator {
     pub name: String,
     pub email: Vec<String>,
     pub logs: Vec<Log>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Log {
     pub description: String,
     pub log_id: String,
@@ -35,7 +35,7 @@ pub struct Log {
     pub temporal_interval: Option<TemporalInterval>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LogState {
     #[serde(rename = "usable")]
     Usable { timestamp: String },
@@ -50,13 +50,13 @@ pub enum LogState {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TemporalInterval {
     pub start_inclusive: String,
     pub end_exclusive: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TreeHead {
     pub sha256_root_hash: String,
     pub tree_size: TreeSize,

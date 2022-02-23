@@ -157,6 +157,7 @@ dependencies = [
  "bytes",
  "chrono",
  "env_logger",
+ "fastrand",
  "log",
  "reqwest",
  "rusqlite",

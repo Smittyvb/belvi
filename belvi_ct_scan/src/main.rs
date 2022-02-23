@@ -185,7 +185,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     fetch_state.update_sths(&ctx).await;
     fetch_state.save(&ctx).await;
 
-    let active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
+    let mut active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
+    fastrand::shuffle(&mut active_logs);
     for log in active_logs {
         fetch_state.fetch_next_batch(&mut ctx, &log).await;
     }

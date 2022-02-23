@@ -65,7 +65,7 @@ async fn get_root() -> impl IntoResponse {
                         .fold(String::new(), |a, b| a + &b),
                     domains = domains,
                     ts3339 = date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    ts = date.format("%b %e, %Y").html_escape()
+                    ts = date.format("%k:%M, %e %b %Y").html_escape()
                 )
             }
         }

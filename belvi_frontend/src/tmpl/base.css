@@ -1,6 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 body {
     background: rgb(221, 249, 249);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+h1 {
+    margin: 0;
+}
+
+footer {
+    text-align: center;
 }
 
 .bvfront-cert-list {
@@ -10,6 +19,7 @@ body {
 
 .bvfront-cert-list > li {
     border: 2px solid #006a6a;
+    background: #baffff;
     margin-bottom: 1rem;
     padding: 0.333rem;
 }

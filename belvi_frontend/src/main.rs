@@ -24,6 +24,22 @@ thread_local! {
     };
 }
 
+fn linkify_domain(s: &String) -> String {
+    if s.starts_with("*.") {
+        format!(
+            r#"*.<a href="https://{domain}/">{domain}</a>"#,
+            domain = s.split_at(2).1,
+        )
+    } else if s.contains('.') && !s.contains('@') {
+        format!(
+            r#"<a href="https://{domain}/">{domain}</a>"#,
+            domain = s.html_escape()
+        )
+    } else {
+        s.clone()
+    }
+}
+
 async fn get_root() -> impl IntoResponse {
     DB_CONN.with(|db| {
         let count: usize = db
@@ -49,6 +65,7 @@ async fn get_root() -> impl IntoResponse {
                 let mut domains = self
                     .domain
                     .iter()
+                    .map(linkify_domain)
                     .fold(String::new(), |a, b| a + &b + ", ")
                     .to_string();
                 domains.truncate(domains.len() - 2);

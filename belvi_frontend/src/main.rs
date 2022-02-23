@@ -48,9 +48,8 @@ async fn get_root() -> impl IntoResponse {
                     .domain
                     .iter()
                     .fold(String::new(), |a, b| a + &b + ", ")
-                    .trim_end()
                     .to_string();
-                domains.truncate(domains.len() - 1);
+                domains.truncate(domains.len() - 2);
                 format!(
                     include_str!("tmpl/cert.html"),
                     leaf_hash = self

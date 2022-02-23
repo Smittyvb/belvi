@@ -148,8 +148,8 @@ impl Ctx {
     fn from_env() -> Self {
         let mut args = env::args_os();
         let data_path: PathBuf = args.nth(1).unwrap().into();
-        let fetch_state_path = data_path.clone().join("state.json");
-        let db_path = data_path.clone().join("data.db");
+        let fetch_state_path = data_path.join("state.json");
+        let db_path = data_path.join("data.db");
         let start_time = Utc::now();
         debug!("Start time is {:?}", start_time);
         debug!("SQLite version is {}", rusqlite::version());

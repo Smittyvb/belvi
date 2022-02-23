@@ -110,7 +110,7 @@ impl Log {
                 false
             } else {
                 let end_exclusive =
-                    DateTime::parse_from_rfc3339(&end_exclusive).expect("invalid log data");
+                    DateTime::parse_from_rfc3339(end_exclusive).expect("invalid log data");
                 end_exclusive > now
             }
         } else {
@@ -149,6 +149,6 @@ impl LogList {
 
     /// Returns an iterator of all logs run by all log operators.
     pub fn logs(&self) -> impl Iterator<Item = &Log> {
-        self.operators.iter().map(|op| op.logs.iter()).flatten()
+        self.operators.iter().flat_map(|op| op.logs.iter())
     }
 }

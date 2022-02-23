@@ -24,7 +24,7 @@ fn ber_to_string(bytes: bytes::Bytes) -> Vec<u8> {
         if let Ok(str) = bcder::Ia5String::take_from(cons) {
             return Ok(str.to_bytes());
         }
-        return Err(decode::Error::Malformed);
+        Err(decode::Error::Malformed)
     });
     // TODO: normalize
     if let Ok(str) = str_decode {
@@ -65,7 +65,7 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
     for subject in &**cert.subject {
         for attr in &**subject {
             // 2.5.4.3 is OID for commonName
-            if attr.typ.as_ref() == &[85, 4, 3] {
+            if attr.typ.as_ref() == [85, 4, 3] {
                 // domains.insert(ber_to_string((**attr.value).clone()));
                 let next_dom =
                     Constructed::decode((**attr.value).clone(), bcder::Mode::Ber, take_tagged_ber);
@@ -78,7 +78,7 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
     if let Some(exts) = &cert.extensions {
         for ext in &**exts {
             // 2.5.29.17  is OID for subjectAltName
-            if ext.id.as_ref() == &[85, 29, 17] {
+            if ext.id.as_ref() == [85, 29, 17] {
                 let doms = Constructed::decode(ext.value.to_bytes(), bcder::Mode::Ber, |cons| {
                     cons.take_sequence(|subcons| {
                         let mut doms = Vec::new();
@@ -184,7 +184,7 @@ impl<'ctx> FetchState {
             match ctx.fetcher.fetch_entries(log, start, end).await {
                 Ok(entries) => {
                     assert!(
-                        entries.len() != 0,
+                        !entries.is_empty(),
                         "CT log sent empty response to get-entries"
                     );
                     let new_end = start + entries.len() as u64 - 1; // update requested end to actual end

@@ -16,7 +16,7 @@ thread_local! {
     static DB_CONN: Connection = {
         let mut args = env::args_os();
         let data_path: PathBuf = args.nth(1).unwrap().into();
-        let db_path = data_path.clone().join("data.db");
+        let db_path = data_path.join("data.db");
         // OPEN_CREATE isn't passed, so we don't create the DB if it doesn't exist
         Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap()
     };
@@ -39,7 +39,7 @@ async fn get_root() -> impl IntoResponse {
                 include_str!("tmpl/base.html"),
                 title = PRODUCT_NAME,
                 product_name = PRODUCT_NAME,
-                content = format!("{} certs", count)
+                content = format_args!("{} certs", count)
             ),
         )
     })

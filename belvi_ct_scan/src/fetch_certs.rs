@@ -290,7 +290,14 @@ impl<'ctx> FetchState {
                                 (prev_start, end)
                             } else {
                                 // going backwards in time
-                                assert!(end == (prev_start - 1));
+                                assert!(
+                                    end == (prev_start - 1),
+                                    "non-adjacent ranges: trying to merge [{}, {}] and [{}, {}]",
+                                    prev_start,
+                                    prev_end,
+                                    start,
+                                    end
+                                );
                                 (start, prev_end)
                             }
                         } else {
@@ -308,7 +315,7 @@ impl<'ctx> FetchState {
                     Some(end - start + 1)
                 }
                 Err(err) => {
-                        warn!(
+                    warn!(
                         "Failed to fetch certs for \"{}\" (range: {}-{}): {:?}",
                         log.description, start, end, err
                     );

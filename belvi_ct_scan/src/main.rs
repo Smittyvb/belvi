@@ -3,7 +3,11 @@ use chrono::{DateTime, Utc};
 use log::{debug, info, warn};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::{collections::{HashMap, HashSet}, env, fs, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    env, fs,
+    path::PathBuf,
+};
 
 mod fetch_certs;
 pub mod log_data;

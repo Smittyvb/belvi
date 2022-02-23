@@ -75,11 +75,6 @@ async fn get_root() -> impl IntoResponse {
                 );
                 format!(
                     include_str!("tmpl/cert.html"),
-                    leaf_hash = self
-                        .leaf_hash
-                        .iter()
-                        .map(|b| format!("{:02X}", b))
-                        .fold(String::new(), |a, b| a + &b),
                     domains = domains,
                     ts3339 = date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                     ts = date.format("%k:%M, %e %b %Y").html_escape()

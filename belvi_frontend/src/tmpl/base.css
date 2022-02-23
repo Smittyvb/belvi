@@ -18,7 +18,8 @@ footer {
 }
 
 .bvfront-cert-list > li {
-    border: 2px solid #006a6a;
+    border: 1px solid #006a6a;
+    border-radius: 0.5rem;
     background: #baffff;
     margin-bottom: 1rem;
     padding: 0.333rem;

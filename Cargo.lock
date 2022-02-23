@@ -171,6 +171,8 @@ name = "belvi_frontend"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "belvi_render",
+ "chrono",
  "env_logger",
  "log",
  "rusqlite",

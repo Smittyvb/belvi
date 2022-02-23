@@ -6,7 +6,7 @@ use x509_certificate::{certificate::X509Certificate, rfc5280::Certificate};
 mod arrays;
 pub(crate) mod ber;
 mod extensions;
-mod html_escape;
+pub mod html_escape;
 mod oid;
 mod strings;
 mod time;

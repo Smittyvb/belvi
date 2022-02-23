@@ -6,6 +6,8 @@ use axum::{
     routing::get,
     Router,
 };
+use belvi_render::html_escape::HtmlEscapable;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{Connection, OpenFlags};
 use std::{env, path::PathBuf};
 
@@ -36,7 +38,7 @@ async fn get_root() -> impl IntoResponse {
         struct CertData {
             leaf_hash: Vec<u8>,
             log_id: u32,
-            ts: u64,
+            ts: i64,
             domain: Vec<String>,
             extra_hash: Vec<u8>,
             not_before: u32,
@@ -50,6 +52,10 @@ async fn get_root() -> impl IntoResponse {
                     .fold(String::new(), |a, b| a + &b + ", ")
                     .to_string();
                 domains.truncate(domains.len() - 2);
+                let date = DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(self.ts / 1000, 0),
+                    Utc,
+                );
                 format!(
                     include_str!("tmpl/cert.html"),
                     leaf_hash = self
@@ -58,8 +64,8 @@ async fn get_root() -> impl IntoResponse {
                         .map(|b| format!("{:02X}", b))
                         .fold(String::new(), |a, b| a + &b),
                     domains = domains,
-                    not_before = self.not_before,
-                    not_after = self.not_after
+                    ts3339 = date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                    ts = date.format("%b %e, %Y").html_escape()
                 )
             }
         }

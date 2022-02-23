@@ -1,6 +1,12 @@
 -- SPDX-License-Identifier: Apache-2.0
 -- Run every time the SQLite database is loaded.
 
+-- CONFIGURE SQLITE --
+PRAGMA journal_mode = WAL;
+PRAGMA encoding = 'UTF-8';
+PRAGMA user_version = 1;
+PRAGMA case_sensitive_like = ON; -- by default LIKE ignores case
+
 BEGIN;
 
 -- INITALIZE TABLES --
@@ -35,12 +41,6 @@ CREATE INDEX IF NOT EXISTS idx_domains_domain1 ON domains (domain);
 CREATE INDEX IF NOT EXISTS idx_log_entries_ts1 ON log_entries (ts);
 
 COMMIT;
-
--- CONFIGURE SQLITE --
-PRAGMA journal_mode = WAL;
-PRAGMA encoding = 'UTF-8';
-PRAGMA user_version = 1;
-PRAGMA case_sensitive_like = ON; -- by default LIKE ignores case
 
 -- OPTIMIZE DB --
 PRAGMA optimize;

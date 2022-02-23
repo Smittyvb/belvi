@@ -9,6 +9,7 @@ use axum::{
 use belvi_render::html_escape::HtmlEscapable;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{Connection, OpenFlags};
+use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf};
 
 const PRODUCT_NAME: &str = "Belvi";
@@ -50,7 +51,7 @@ async fn get_root() -> impl IntoResponse {
         let mut certs_stmt = db.prepare_cached(include_str!("recent_certs.sql")).unwrap();
         let mut certs_rows = certs_stmt.query([]).unwrap();
         // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
-        #[derive(Debug)]
+        #[derive(Debug, Serialize, Deserialize)]
         struct CertData {
             leaf_hash: Vec<u8>,
             log_id: u32,
@@ -77,7 +78,8 @@ async fn get_root() -> impl IntoResponse {
                     include_str!("tmpl/cert.html"),
                     domains = domains,
                     ts3339 = date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    ts = date.format("%k:%M, %e %b %Y").html_escape()
+                    ts = date.format("%k:%M, %e %b %Y").html_escape(),
+                    json = serde_json::to_string(self).unwrap().html_escape(),
                 )
             }
         }

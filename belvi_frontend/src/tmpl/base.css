@@ -26,3 +26,11 @@ footer {
     border: 1px solid #006a6a;
     padding: 0.25em;
 }
+
+.bvfront-cert-list td:first-child {
+    display: block;
+    width: max-content;
+    border-collapse: collapse;
+    border-top: 0;
+    border-right: 0;
+}

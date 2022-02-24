@@ -14,8 +14,12 @@ footer {
 
 .bvfront-cert-list {
     border-spacing: 0;
-    border-collapse: collapse;
     margin-top: 1em;
+}
+
+.bvfront-cert-list > thead {
+    position: sticky;
+    top: 0;
 }
 
 .bvfront-cert-list tr {
@@ -25,6 +29,14 @@ footer {
 .bvfront-cert-list td, .bvfront-cert-list th {
     border: 1px solid #006a6a;
     padding: 0.25em;
+}
+
+.bvfront-cert-list td {
+    border-top: none;
+}
+
+.bvfront-cert-list th:first-child {
+    border-right: none;
 }
 
 .bvfront-cert-list td:first-child {

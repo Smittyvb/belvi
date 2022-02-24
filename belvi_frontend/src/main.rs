@@ -116,7 +116,7 @@ async fn get_root() -> impl IntoResponse {
                 title = PRODUCT_NAME,
                 product_name = PRODUCT_NAME,
                 content = format_args!(
-                    r#"<ul class="bvfront-cert-list">{}</ul>"#,
+                    r#"<table class="bvfront-cert-list"><thead><tr><th>Date</th><th>Domains</th></tr></thead><tbody>{}</tbody></table>"#,
                     certs
                         .iter()
                         .map(CertData::render)

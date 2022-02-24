@@ -13,14 +13,16 @@ footer {
 }
 
 .bvfront-cert-list {
-    list-style-type: none;
-    padding: 0;
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin-top: 1em;
 }
 
-.bvfront-cert-list > li {
-    border: 1px solid #006a6a;
-    border-radius: 0.5rem;
+.bvfront-cert-list tr {
     background: #baffff;
-    margin-bottom: 1rem;
-    padding: 0.333rem;
+}
+
+.bvfront-cert-list td, .bvfront-cert-list th {
+    border: 1px solid #006a6a;
+    padding: 0.25em;
 }

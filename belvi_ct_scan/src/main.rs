@@ -60,6 +60,7 @@ impl Fetcher {
             .await?;
         if resp.status() != StatusCode::OK {
             // TODO: proper error handling
+            // TODO: backoff after 429
             panic!(
                 "bad resp status {} while fetching {}-{} from \"{}\": {}",
                 resp.status().as_str(),

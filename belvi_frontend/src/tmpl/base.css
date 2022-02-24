@@ -46,6 +46,7 @@ main {
     background: inherit;
     margin: 0;
     margin-top: 0.5em;
+    border-collapse: collapse;
 }
 
 .bvfront-cert-list > thead {
@@ -54,8 +55,11 @@ main {
     background: inherit;
 }
 
-.bvfront-cert-list td, .bvfront-cert-list th {
+.bvfront-cert-list tr {
     border-bottom: 1px solid #bbb;
+}
+
+.bvfront-cert-list td, .bvfront-cert-list th {
     padding: 0.25em;
     text-align: left;
     padding-right: 1.5em;
@@ -64,7 +68,6 @@ main {
 .bvfront-cert-list td:first-child {
     display: block;
     width: max-content;
-    border-collapse: collapse;
     border-top: 0;
     border-right: 0;
 }

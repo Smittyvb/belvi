@@ -30,11 +30,13 @@ a:visited {
 .bvfront-cert-list {
     border-spacing: 0;
     margin-top: 1em;
+    background: inherit;
 }
 
 .bvfront-cert-list > thead {
     position: sticky;
     top: -1px;
+    background: inherit;
 }
 
 .bvfront-cert-list td, .bvfront-cert-list th {

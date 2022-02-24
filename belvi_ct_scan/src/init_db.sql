@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS domains (
 
 -- CREATE INDICIES --
 CREATE INDEX IF NOT EXISTS idx_domains_domain1 ON domains (domain);
+CREATE INDEX IF NOT EXISTS idx_domains_leaf_hash1 ON domains (leaf_hash);
 CREATE INDEX IF NOT EXISTS idx_log_entries_ts1 ON log_entries (ts);
 
 COMMIT;

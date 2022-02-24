@@ -19,7 +19,7 @@ footer {
 
 .bvfront-cert-list > thead {
     position: sticky;
-    top: 0;
+    top: -1px;
 }
 
 .bvfront-cert-list tr {

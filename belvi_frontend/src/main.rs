@@ -28,16 +28,16 @@ thread_local! {
 fn linkify_domain(s: &String) -> String {
     if s.starts_with("*.") {
         format!(
-            r#"<span class="bvfront-domain">*.<a href="https://{domain}/">{domain}</a></span>"#,
+            r#"<div class="bvfront-domain">*.<a href="https://{domain}/">{domain}</a></div>"#,
             domain = s.split_at(2).1,
         )
     } else if s.contains('.') && !s.contains('@') {
         format!(
-            r#"<span class="bvfront-domain"><a href="https://{domain}/">{domain}</a></span>"#,
+            r#"<div class="bvfront-domain"><a href="https://{domain}/">{domain}</a></div>"#,
             domain = s.html_escape()
         )
     } else {
-        format!(r#"<span class="bvfront-domain">{}</span>"#, s.html_escape())
+        format!(r#"<div class="bvfront-domain">{}</div>"#, s.html_escape())
     }
 }
 
@@ -67,9 +67,8 @@ async fn get_root() -> impl IntoResponse {
                     .domain
                     .iter()
                     .map(linkify_domain)
-                    .fold(String::new(), |a, b| a + &b + ", ")
+                    .fold(String::new(), |a, b| a + &b + "")
                     .to_string();
-                domains.truncate(domains.len() - 2);
                 let date = DateTime::<Utc>::from_utc(
                     NaiveDateTime::from_timestamp(self.ts / 1000, 0),
                     Utc,

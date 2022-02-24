@@ -6,15 +6,10 @@ use bcder::{
 };
 use belvi_log_list::Log;
 use log::{debug, info, trace, warn};
-use std::{cmp::Ordering, collections::BTreeSet};
+use std::collections::BTreeSet;
 use x509_certificate::{asn1time::Time, rfc5280::TbsCertificate};
 
-/// Initially request certificates in batches of this size.
-const MAX_PAGE_SIZE: u64 = 1000;
-/// To improve server-side log caching, after N requests limit the page size to the learned value.
-const FETCHES_FOR_SMALLER_PAGES: u64 = 10;
-/// We always want at least the last N certs for every log.
-const MIN_HISTORY: u64 = 5000;
+pub mod batcher;
 
 fn ber_to_string(bytes: bytes::Bytes) -> Vec<u8> {
     let str_decode = Constructed::decode(bytes.clone(), bcder::Mode::Ber, |cons| {
@@ -115,71 +110,12 @@ fn time_to_unix(time: Time) -> i64 {
 }
 
 impl<'ctx> FetchState {
-    /// Returns the start and end index (inclusive) of the entries to retrieve next.
-    /// The return value can be passed directly to the get-entries endpoint. `None` indicates
-    /// nothing should be fetched. The return value will be adjacent to the current fetched
-    /// endpoints.
-    pub fn next_batch(&self, ctx: &Ctx, id: LogId) -> Option<(u64, u64)> {
-        let transient = ctx
-            .log_transient
-            .get(&id)
-            .map(Clone::clone)
-            .unwrap_or_default();
-        let state = self
-            .log_states
-            .get(&id)
-            .expect("next_batch called with bad id");
-
-        let page_size = if transient.fetches > FETCHES_FOR_SMALLER_PAGES {
-            transient.highest_page_size
-        } else {
-            MAX_PAGE_SIZE
-        };
-
-        // subtract 1 to account for 0-indexing
-        let tree_size = state.sth.tree_size.saturating_sub(1);
-
-        // start and end are both inclusive bounds!
-        if let Some((cur_start, cur_end)) = state.fetched_to {
-            match cur_end.cmp(&tree_size) {
-                // we have got to the STH
-                Ordering::Equal => {
-                    let desired_start = cur_end.saturating_sub(MIN_HISTORY);
-                    if desired_start < cur_start {
-                        Some((
-                            cur_start
-                                .saturating_sub(MIN_HISTORY)
-                                .max(cur_start.saturating_sub(MAX_PAGE_SIZE)),
-                            cur_start - 1,
-                        ))
-                    } else {
-                        None
-                    }
-                }
-                // need to fetch to get up to the STH
-                Ordering::Less => Some((
-                    // from the current end, fetch up to a page to get closer to the STH
-                    cur_end + 1,
-                    tree_size.min(cur_end + MAX_PAGE_SIZE),
-                )),
-                Ordering::Greater => panic!(
-                    "impossible, cur_end, {} is past STH, {}",
-                    cur_end, tree_size
-                ),
-            }
-        } else {
-            // initial fetch: one page from the beginning
-            Some((
-                tree_size.saturating_sub(page_size - 1), // subtraction accounts for bounds inclusion
-                tree_size,
-            ))
-        }
-    }
-
     pub async fn fetch_next_batch(&mut self, ctx: &mut Ctx, log: &Log) -> Option<u64> {
         info!("Fetching batch of certs from \"{}\"", log.description);
         let id = LogId(log.log_id.clone());
-        if let Some((start, end)) = self.next_batch(ctx, id.clone()) {
+        let next_batch = self.next_batch(ctx, id.clone());
+        trace!("Desired range is {:?}", next_batch);
+        if let Some((start, end)) = next_batch {
             assert!(start <= end);
             match ctx.fetcher.fetch_entries(log, start, end).await {
                 Ok(entries) => {
@@ -283,35 +219,7 @@ impl<'ctx> FetchState {
                     debug!("Fetched {}-{} from \"{}\"", start, end, log.description);
                     // adjust log_states
                     let log_state = self.log_states.get_mut(&id).expect("no data for log");
-                    let (new_start, new_end) =
-                        if let Some((prev_start, prev_end)) = log_state.fetched_to {
-                            if start == (prev_end + 1) {
-                                // going forward in time
-                                (prev_start, end)
-                            } else {
-                                // going backwards in time
-                                assert!(
-                                    end == (prev_start - 1),
-                                    "non-adjacent ranges: trying to merge [{}, {}] and [{}, {}]",
-                                    prev_start,
-                                    prev_end,
-                                    start,
-                                    end
-                                );
-                                (start, prev_end)
-                            }
-                        } else {
-                            // first fetch
-                            (start, end)
-                        };
-                    assert!(
-                        new_end >= new_start,
-                        "new endpoint past new startpoint, new: {}-{}, old: {:?}",
-                        new_start,
-                        new_end,
-                        log_state.fetched_to
-                    );
-                    log_state.fetched_to = Some((new_start, new_end));
+                    log_state.fetched_to = log_state.fetched_to.merge_fetched((start, end));
                     Some(end - start + 1)
                 }
                 Err(err) => {

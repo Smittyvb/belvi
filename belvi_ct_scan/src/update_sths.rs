@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::{Ctx, FetchState, LogFetchState, LogId};
+use crate::{fetch_certs::batcher::HistState, Ctx, FetchState, LogFetchState, LogId};
 use log::{debug, error, info, trace};
 
 impl FetchState {
@@ -35,7 +35,7 @@ impl FetchState {
                         log_id,
                         LogFetchState {
                             sth: new_sth,
-                            fetched_to: None,
+                            fetched_to: HistState::default(),
                         },
                     );
                 }

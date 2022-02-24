@@ -120,7 +120,7 @@ impl FetchState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct LogFetchState {
     sth: LogSth,
-    fetched_to: Option<(u64, u64)>,
+    fetched_to: fetch_certs::batcher::HistState,
 }
 
 #[derive(Debug)]

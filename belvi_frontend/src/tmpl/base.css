@@ -37,6 +37,11 @@ main {
     background: inherit;
 }
 
+.bvfront-domain {
+    /* don't have line break in middle of domain */
+    white-space: nowrap;
+}
+
 .bvfront-domains {
     font-family: Hack, monospace;
 }

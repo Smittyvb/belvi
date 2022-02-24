@@ -28,16 +28,16 @@ thread_local! {
 fn linkify_domain(s: &String) -> String {
     if s.starts_with("*.") {
         format!(
-            r#"*.<a href="https://{domain}/">{domain}</a>"#,
+            r#"<span class="bvfront-domain">*.<a href="https://{domain}/">{domain}</a></span>"#,
             domain = s.split_at(2).1,
         )
     } else if s.contains('.') && !s.contains('@') {
         format!(
-            r#"<a href="https://{domain}/">{domain}</a>"#,
+            r#"<span class="bvfront-domain"><a href="https://{domain}/">{domain}</a></span>"#,
             domain = s.html_escape()
         )
     } else {
-        s.clone()
+        format!(r#"<span class="bvfront-domain">{}</span>"#, s.html_escape())
     }
 }
 

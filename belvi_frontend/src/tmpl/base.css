@@ -74,6 +74,4 @@ main {
 .bvfront-cert-list td:first-child {
     display: block;
     width: max-content;
-    border-top: 0;
-    border-right: 0;
 }

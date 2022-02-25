@@ -41,6 +41,10 @@ fn linkify_domain(s: &String) -> String {
     }
 }
 
+fn format_date(date: DateTime<Utc>) -> String {
+    date.format("%k:%M, %e %b %Y").html_escape()
+}
+
 async fn get_root() -> impl IntoResponse {
     DB_CONN.with(|db| {
         let count: usize = db
@@ -58,26 +62,39 @@ async fn get_root() -> impl IntoResponse {
             ts: i64,
             domain: Vec<String>,
             extra_hash: Vec<u8>,
-            not_before: u32,
-            not_after: u32,
+            not_before: i64,
+            not_after: i64,
         }
         impl CertData {
             fn render(&self) -> String {
-                let mut domains = self
+                let domains = self
                     .domain
                     .iter()
                     .map(linkify_domain)
                     .fold(String::new(), |a, b| a + &b + "")
                     .to_string();
-                let date = DateTime::<Utc>::from_utc(
+                let logged_at = DateTime::<Utc>::from_utc(
                     NaiveDateTime::from_timestamp(self.ts / 1000, 0),
+                    Utc,
+                );
+                let not_before = DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(self.not_before, 0),
+                    Utc,
+                );
+                let not_after = DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(self.not_after, 0),
                     Utc,
                 );
                 format!(
                     include_str!("tmpl/cert.html"),
                     domains = domains,
-                    ts3339 = date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    ts = date.format("%k:%M, %e %b %Y").html_escape(),
+                    ts3339 = logged_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                    ts = format_date(logged_at),
+                    not_before3339 =
+                        not_before.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                    not_before = format_date(not_before),
+                    not_after3339 = not_after.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                    not_after = format_date(not_after),
                     json = serde_json::to_string(self).unwrap().html_escape(),
                 )
             }

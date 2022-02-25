@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
+    extract::Path,
     http::StatusCode,
     response::{Headers, IntoResponse},
     routing::get,
     Router,
 };
-use belvi_render::html_escape::HtmlEscapable;
+use bcder::decode::Constructed;
+use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
@@ -14,12 +16,15 @@ use std::{env, path::PathBuf};
 
 const PRODUCT_NAME: &str = "Belvi";
 
+fn get_data_path() -> PathBuf {
+    let mut args = env::args_os();
+    args.nth(1).unwrap().into()
+}
+
 // TODO: use tokio::task_local instead?
 thread_local! {
     static DB_CONN: Connection = {
-        let mut args = env::args_os();
-        let data_path: PathBuf = args.nth(1).unwrap().into();
-        let db_path = data_path.join("data.db");
+        let db_path = get_data_path().join("data.db");
         // OPEN_CREATE isn't passed, so we don't create the DB if it doesn't exist
         Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap()
     };
@@ -145,11 +150,59 @@ async fn get_root() -> impl IntoResponse {
     })
 }
 
+async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
+    let maybe_file = tokio::fs::read(get_data_path().join("certs").join(leaf_hash)).await;
+    match maybe_file {
+        Ok(cert) => {
+            // TODO: render as normal cert for non-precerts
+            let cert = Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+                x509_certificate::rfc5280::TbsCertificate::take_from(cons)
+            })
+            .expect("invalid cert in log");
+            (
+                StatusCode::FOUND,
+                Headers([
+                    ("Server", "belvi_frontend/1.0"),
+                    ("Content-Type", "text/html"),
+                ]),
+                format!(
+                    include_str!("tmpl/base.html"),
+                    title = PRODUCT_NAME,
+                    product_name = PRODUCT_NAME,
+                    content = cert.render(),
+                    css = concat!(
+                        include_str!("tmpl/base.css"),
+                        include_str!("../../belvi_render/bvcert.css")
+                    ),
+                    script = include_str!("tmpl/dates.js")
+                ),
+            )
+        }
+        Err(_) => (
+            StatusCode::NOT_FOUND,
+            Headers([
+                ("Server", "belvi_frontend/1.0"),
+                ("Content-Type", "text/html"),
+            ]),
+            format!(
+                include_str!("tmpl/base.html"),
+                title = PRODUCT_NAME,
+                product_name = PRODUCT_NAME,
+                content = "Certificate not found.",
+                css = include_str!("tmpl/base.css"),
+                script = ""
+            ),
+        ),
+    }
+}
+
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
     env_logger::init();
 
-    let app = Router::new().route("/", get(get_root));
+    let app = Router::new()
+        .route("/", get(get_root))
+        .route("/cert/:leaf_hash", get(get_cert));
 
     axum::Server::bind(&"0.0.0.0:47371".parse().unwrap())
         .serve(app.into_make_service())

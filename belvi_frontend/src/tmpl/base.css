@@ -6,8 +6,8 @@ body {
 
 h1 {
     margin: 0;
-    text-align: center;
     font-size: 5em;
+    margin-left: -6px; /* large font sizes makes it pushed to right */
 }
 
 h2 {
@@ -23,8 +23,11 @@ footer {
 }
 
 a {
-    text-decoration: none;
     color: #000092;
+}
+
+.bvfront-domains a {
+    text-decoration: none;
 }
 
 a:visited {
@@ -40,10 +43,6 @@ main {
 .bvfront-domain {
     /* don't have line break in middle of domain */
     white-space: nowrap;
-}
-
-.bvfront-domains {
-    font-family: Hack, monospace;
 }
 
 .bvfront-cert-list {
@@ -63,6 +62,7 @@ main {
 
 .bvfront-cert-list tr {
     border-bottom: 1px solid #bbb;
+    vertical-align: top;
 }
 
 .bvfront-cert-list td, .bvfront-cert-list th {

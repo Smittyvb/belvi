@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS certs (
 CREATE TABLE IF NOT EXISTS log_entries (
     leaf_hash BLOB NOT NULL, -- SHA256 of leaf data
     log_id NUMBER NOT NULL, -- ID of log
+    idx NUMBER NOT NULL, -- index in log
     ts NUMBER NOT NULL, -- time the certificate was incorporated into the first log we saw this cert in
     PRIMARY KEY (leaf_hash, log_id)
 );

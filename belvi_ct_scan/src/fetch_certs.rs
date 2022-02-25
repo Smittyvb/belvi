@@ -147,7 +147,7 @@ impl<'ctx> FetchState {
                         .unwrap();
                     let mut entry_insert = ctx
                         .sqlite_conn
-                        .prepare_cached("INSERT OR IGNORE INTO log_entries (leaf_hash, log_id, ts) VALUES (?, ?, ?)")
+                        .prepare_cached("INSERT OR IGNORE INTO log_entries (leaf_hash, log_id, ts, idx) VALUES (?, ?, ?, ?)")
                         .unwrap();
                     let mut domain_insert = ctx
                         .sqlite_conn
@@ -205,7 +205,7 @@ impl<'ctx> FetchState {
                             ])
                             .expect("failed to insert cert");
                         entry_insert
-                            .execute(rusqlite::params![leaf_hash, id.num(), log_timestamp])
+                            .execute(rusqlite::params![leaf_hash, id.num(), log_timestamp, idx])
                             .expect("failed to insert entry");
                         for domain in domains {
                             domain_insert

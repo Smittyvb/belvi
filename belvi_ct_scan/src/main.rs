@@ -127,6 +127,7 @@ struct LogFetchState {
 struct Ctx {
     data_path: PathBuf,
     fetch_state_path: PathBuf,
+    certs_path: PathBuf,
     log_list: LogList,
     fetcher: Fetcher,
     start_time: DateTime<Utc>,
@@ -150,11 +151,16 @@ impl Default for LogTransient {
 }
 
 impl Ctx {
-    fn from_env() -> Self {
+    fn from_env_sync() -> Self {
         let mut args = env::args_os();
         let data_path: PathBuf = args.nth(1).unwrap().into();
         let fetch_state_path = data_path.join("state.json");
         let db_path = data_path.join("data.db");
+        let certs_path = data_path.join("certs");
+        if !certs_path.exists() {
+            warn!("certs directory doesn't exist; creating");
+            fs::create_dir(certs_path.clone()).unwrap();
+        }
         let start_time = Utc::now();
         debug!("Start time is {:?}", start_time);
         debug!("SQLite version is {}", rusqlite::version());
@@ -165,6 +171,7 @@ impl Ctx {
         Ctx {
             data_path,
             fetch_state_path,
+            certs_path,
             start_time,
             sqlite_conn,
             log_transient: HashMap::new(),
@@ -184,7 +191,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     info!("Starting Belvi fetcher");
 
-    let mut ctx = Ctx::from_env();
+    let mut ctx = Ctx::from_env_sync();
     let mut fetch_state = FetchState::new_sync(&ctx);
 
     fetch_state.update_sths(&ctx).await;

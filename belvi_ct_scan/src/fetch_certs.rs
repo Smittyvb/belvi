@@ -194,7 +194,8 @@ impl<'ctx> FetchState {
                             not_after.as_ref()
                         );
                         // TODO: store cert
-                        let leaf_hash = belvi_hash::db(log_entry.inner_cert()).to_vec();
+                        let leaf_hash_bytes = belvi_hash::db(log_entry.inner_cert());
+                        let leaf_hash = leaf_hash_bytes.to_vec();
                         let extra_hash = belvi_hash::db(&entry.extra_data);
                         cert_insert
                             .execute(rusqlite::params![
@@ -215,6 +216,15 @@ impl<'ctx> FetchState {
                                 ])
                                 .expect("failed to insert domain");
                         }
+                        // wrap in spawn to make it parallel instead of just concurrent
+                        let file_path = ctx
+                            .certs_path
+                            .join(format!("{}", hex::encode(leaf_hash_bytes)));
+                        let file_contents = log_entry.inner_cert().clone();
+                        // TODO: parallelize
+                        tokio::fs::write(file_path, file_contents)
+                            .await
+                            .expect("failed to save cert");
                     }
                     debug!("Fetched {}-{} from \"{}\"", start, end, log.description);
                     // adjust log_states

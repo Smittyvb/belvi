@@ -121,7 +121,8 @@ async fn get_root() -> impl IntoResponse {
                         .map(CertData::render)
                         .fold(String::new(), |a, b| a + &b)
                 ),
-                css = include_str!("tmpl/base.css")
+                css = include_str!("tmpl/base.css"),
+                script = include_str!("tmpl/dates.js")
             ),
         )
     })

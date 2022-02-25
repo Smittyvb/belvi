@@ -63,15 +63,30 @@ main {
 .bvfront-cert-list tr {
     border-bottom: 1px solid #bbb;
     vertical-align: top;
+    height: 100%;
 }
 
-.bvfront-cert-list td, .bvfront-cert-list th {
-    padding: 0.25em;
-    text-align: left;
-    padding-right: 1.5em;
+.bvfront-cert-list td {
+    padding: 0;
+    height: 100%;
 }
 
 .bvfront-cert-list td:first-child {
     display: block;
     width: max-content;
+}
+
+.bvfront-table-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    color: inherit;
+    text-decoration: none;
+    padding: 0.25em;
+    text-align: left;
+    padding-right: 1.5em;
+}
+
+.bvfront-table-link:visited {
+    color: inherit;
 }

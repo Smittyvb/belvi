@@ -30,20 +30,8 @@ thread_local! {
     };
 }
 
-fn linkify_domain(s: &String) -> String {
-    if s.starts_with("*.") {
-        format!(
-            r#"<div class="bvfront-domain">*.<a href="https://{domain}/">{domain}</a></div>"#,
-            domain = s.split_at(2).1,
-        )
-    } else if s.contains('.') && !s.contains('@') {
-        format!(
-            r#"<div class="bvfront-domain"><a href="https://{domain}/">{domain}</a></div>"#,
-            domain = s.html_escape()
-        )
-    } else {
-        format!(r#"<div class="bvfront-domain">{}</div>"#, s.html_escape())
-    }
+fn render_domain(s: &String) -> String {
+    format!(r#"<div class="bvfront-domain">{}</div>"#, s.html_escape())
 }
 
 fn format_date(date: DateTime<Utc>) -> String {
@@ -75,7 +63,7 @@ async fn get_root() -> impl IntoResponse {
                 let domains = self
                     .domain
                     .iter()
-                    .map(linkify_domain)
+                    .map(render_domain)
                     .fold(String::new(), |a, b| a + &b + "")
                     .to_string();
                 let logged_at = DateTime::<Utc>::from_utc(
@@ -101,6 +89,7 @@ async fn get_root() -> impl IntoResponse {
                     not_after3339 = not_after.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
                     not_after = format_date(not_after),
                     json = serde_json::to_string(self).unwrap().html_escape(),
+                    cert_link = hex::encode(&self.leaf_hash),
                 )
             }
         }

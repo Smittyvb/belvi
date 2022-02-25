@@ -1,1 +1,6 @@
-<tr data-cert="{json}"><td><time datetime="{ts3339}">{ts}</time></td><td><span class="bvfront-domains">{domains}</span></td><td><time datetime="{not_before3339}">{not_before}</time></td><td><time datetime="{not_after3339}">{not_after}</time></td></tr>
+<tr data-cert="{json}">
+    <td><a href="/cert/{cert_link}" class="bvfront-table-link"><time datetime="{ts3339}">{ts}</time></a></td>
+    <td><a href="/cert/{cert_link}" class="bvfront-table-link"><span class="bvfront-domains">{domains}</span></a></td>
+    <td><a href="/cert/{cert_link}" class="bvfront-table-link"><time datetime="{not_before3339}">{not_before}</time></a></td>
+    <td><a href="/cert/{cert_link}" class="bvfront-table-link"><time datetime="{not_after3339}">{not_after}</time></a></td>
+</tr>

@@ -177,6 +177,7 @@ dependencies = [
  "belvi_render",
  "chrono",
  "env_logger",
+ "hex",
  "log",
  "rusqlite",
  "serde",

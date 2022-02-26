@@ -15,7 +15,7 @@ body {
 }
 
 .bvcert-kv-table tr > th, .bvcert-kv-table tr > td {
-    border-bottom: 2px solid rgb(128, 128, 128);
+    border-bottom: 1px solid rgb(128, 128, 128);
     padding: 4px;
 }
 

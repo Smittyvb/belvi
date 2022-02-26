@@ -150,7 +150,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
             })
             .expect("invalid cert in log");
             (
-                StatusCode::FOUND,
+                StatusCode::OK,
                 Headers([
                     ("Server", "belvi_frontend/1.0"),
                     ("Content-Type", "text/html"),

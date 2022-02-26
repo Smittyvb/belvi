@@ -24,8 +24,9 @@ body {
 }
 
 .bvcert-kv-table {
-    border-spacing: 0;
     border: 2px solid rgb(88, 88, 88);
+    border-radius: 0.4em;
+    border-spacing: 0;
     padding: 0;
 }
 

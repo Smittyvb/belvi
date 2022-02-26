@@ -2,6 +2,7 @@
 
 use axum::{
     extract::Path,
+    handler::Handler,
     http::StatusCode,
     response::{Headers, IntoResponse},
     routing::get,
@@ -185,13 +186,32 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
     }
 }
 
+async fn global_404() -> impl IntoResponse {
+    (
+        StatusCode::NOT_FOUND,
+        Headers([
+            ("Server", "belvi_frontend/1.0"),
+            ("Content-Type", "text/html"),
+        ]),
+        format!(
+            include_str!("tmpl/base.html"),
+            title = PRODUCT_NAME,
+            product_name = PRODUCT_NAME,
+            content = "Not found.",
+            css = include_str!("tmpl/base.css"),
+            script = ""
+        ),
+    )
+}
+
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
     env_logger::init();
 
     let app = Router::new()
         .route("/", get(get_root))
-        .route("/cert/:leaf_hash", get(get_cert));
+        .route("/cert/:leaf_hash", get(get_cert))
+        .fallback(global_404.into_service());
 
     axum::Server::bind(&"0.0.0.0:47371".parse().unwrap())
         .serve(app.into_make_service())

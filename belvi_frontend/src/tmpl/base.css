@@ -91,3 +91,17 @@ main {
 .bvfront-table-link:visited {
     color: inherit;
 }
+
+main > .bvcert-kv-table {
+    border: none;
+}
+
+main > .bvcert-kv-table > tbody > tr > th {
+    background: none;
+}
+
+main > .bvcert-kv-table > tbody > tr > th, main > .bvcert-kv-table > tbody > tr > td {
+    border-bottom: 1px solid #bbb;
+    padding-top: .5em;
+    padding-bottom: .5em;
+}

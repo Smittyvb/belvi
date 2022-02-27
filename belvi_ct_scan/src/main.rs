@@ -7,6 +7,7 @@ use std::{
     collections::{HashMap, HashSet},
     env, fs,
     path::PathBuf,
+    sync::Mutex,
 };
 
 mod fetch_certs;
@@ -191,7 +192,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     info!("Starting Belvi fetcher");
 
-    let mut ctx = Ctx::from_env_sync();
+    let ctx = Ctx::from_env_sync();
     let mut fetch_state = FetchState::new_sync(&ctx);
 
     fetch_state.update_sths(&ctx).await;
@@ -199,19 +200,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
     let mut checked_logs: HashSet<String> = HashSet::new();
+    let ctx = Mutex::new(ctx);
     while checked_logs.len() < active_logs.len() {
         fastrand::shuffle(&mut active_logs);
+        ctx.lock().unwrap().sqlite_conn.prepare_cached("BEGIN IMMEDIATE").unwrap().execute([]).unwrap();
         for log in &active_logs {
             if checked_logs.contains(&log.log_id) {
                 continue;
             }
-            if let Some(count) = fetch_state.fetch_next_batch(&mut ctx, &log).await {
+            if let Some(count) = fetch_state.fetch_next_batch(&ctx, &log).await {
                 info!("Fetched {} certs from \"{}\"", count, log.description);
             } else {
                 checked_logs.insert(log.log_id.clone());
             }
         }
-        fetch_state.save(&ctx).await;
+        ctx.lock().unwrap().sqlite_conn.prepare_cached("COMMIT").unwrap().execute([]).unwrap();
+        fetch_state.save(&ctx.lock().unwrap()).await;
     }
 
     Ok(())

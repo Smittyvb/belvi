@@ -6,7 +6,7 @@ use bcder::{
 };
 use belvi_log_list::Log;
 use log::{debug, info, trace, warn};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Mutex};
 use x509_certificate::{asn1time::Time, rfc5280::TbsCertificate};
 
 pub mod batcher;
@@ -110,15 +110,18 @@ fn time_to_unix(time: Time) -> i64 {
 }
 
 impl<'ctx> FetchState {
-    pub async fn fetch_next_batch(&mut self, ctx: &mut Ctx, log: &Log) -> Option<u64> {
+    pub async fn fetch_next_batch(&mut self, ctx: &Mutex<Ctx>, log: &Log) -> Option<u64> {
         info!("Fetching batch of certs from \"{}\"", log.description);
         let id = LogId(log.log_id.clone());
-        let next_batch = self.next_batch(ctx, id.clone());
+        let inner_ctx = ctx.lock().unwrap();
+        let next_batch = self.next_batch(&*inner_ctx, id.clone());
+        let certs_path = inner_ctx.certs_path.clone();
         trace!("Desired range is {:?}", next_batch);
         if let Some((start, end)) = next_batch {
             assert!(start <= end);
-            match ctx.fetcher.fetch_entries(log, start, end).await {
+            match inner_ctx.fetcher.fetch_entries(log, start, end).await {
                 Ok(entries) => {
+                    drop(inner_ctx);
                     assert!(
                         !entries.is_empty(),
                         "CT log sent empty response to get-entries"
@@ -134,22 +137,23 @@ impl<'ctx> FetchState {
                         entries.len(),
                     );
                     let end = new_end;
-                    let transient_entry = ctx.log_transient.entry(id.clone()).or_default();
+                    let mut inner_ctx = ctx.lock().unwrap();
+                    let transient_entry = inner_ctx.log_transient.entry(id.clone()).or_default();
                     transient_entry.fetches += 1;
                     transient_entry.highest_page_size = transient_entry
                         .highest_page_size
                         .max(entries.len().try_into().expect(">64 bit?"));
-                    let mut cert_insert = ctx
-                        .sqlite_conn
+                    let mut cert_insert = inner_ctx
+                    .sqlite_conn
                         .prepare_cached(
                             "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash, not_before, not_after, cert_type) VALUES (?, ?, ?, ?, ?)",
                         )
                         .unwrap();
-                    let mut entry_insert = ctx
+                    let mut entry_insert = inner_ctx
                         .sqlite_conn
                         .prepare_cached("INSERT OR IGNORE INTO log_entries (leaf_hash, log_id, ts, idx) VALUES (?, ?, ?, ?)")
                         .unwrap();
-                    let mut domain_insert = ctx
+                    let mut domain_insert = inner_ctx
                         .sqlite_conn
                         .prepare_cached(
                             "INSERT OR IGNORE INTO domains (leaf_hash, domain) VALUES (?, ?)",
@@ -218,9 +222,8 @@ impl<'ctx> FetchState {
                                 .expect("failed to insert domain");
                         }
                         // wrap in spawn to make it parallel instead of just concurrent
-                        let file_path = ctx
-                            .certs_path
-                            .join(format!("{}", hex::encode(leaf_hash_bytes)));
+                        let file_path =
+                            certs_path.join(format!("{}", hex::encode(leaf_hash_bytes)));
                         let file_contents = log_entry.inner_cert().clone();
                         // TODO: parallelize
                         tokio::fs::write(file_path, file_contents)

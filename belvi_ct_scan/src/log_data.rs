@@ -153,6 +153,12 @@ impl LogEntry {
             } => cert,
         }
     }
+    pub fn num(&self) -> u8 {
+        match self {
+            Self::X509(_) => 1,
+            Self::Precert { .. } => 2,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

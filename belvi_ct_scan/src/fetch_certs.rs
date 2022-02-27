@@ -142,7 +142,7 @@ impl<'ctx> FetchState {
                     let mut cert_insert = ctx
                         .sqlite_conn
                         .prepare_cached(
-                            "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash, not_before, not_after) VALUES (?, ?, ?, ?)",
+                            "INSERT OR IGNORE INTO certs (leaf_hash, extra_hash, not_before, not_after, cert_type) VALUES (?, ?, ?, ?, ?)",
                         )
                         .unwrap();
                     let mut entry_insert = ctx
@@ -202,7 +202,8 @@ impl<'ctx> FetchState {
                                 leaf_hash,
                                 extra_hash.to_vec(),
                                 time_to_unix(not_before),
-                                time_to_unix(not_after)
+                                time_to_unix(not_after),
+                                log_entry.num(),
                             ])
                             .expect("failed to insert cert");
                         entry_insert

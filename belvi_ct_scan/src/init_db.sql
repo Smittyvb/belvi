@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS certs (
     leaf_hash BLOB PRIMARY KEY NOT NULL, -- SHA256 of leaf data
     extra_hash BLOB NOT NULL, -- SHA256 of extra data
     not_before INTEGER NOT NULL,
-    not_after INTEGER NOT NULL
+    not_after INTEGER NOT NULL,
+    cert_type NUMBER NOT NULL
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS log_entries (
     leaf_hash BLOB NOT NULL, -- SHA256 of leaf data

@@ -203,7 +203,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ctx = Mutex::new(ctx);
     while checked_logs.len() < active_logs.len() {
         fastrand::shuffle(&mut active_logs);
-        ctx.lock().unwrap().sqlite_conn.prepare_cached("BEGIN IMMEDIATE").unwrap().execute([]).unwrap();
+        ctx.lock()
+            .unwrap()
+            .sqlite_conn
+            .prepare_cached("BEGIN DEFERRED")
+            .unwrap()
+            .execute([])
+            .unwrap();
         for log in &active_logs {
             if checked_logs.contains(&log.log_id) {
                 continue;
@@ -214,7 +220,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 checked_logs.insert(log.log_id.clone());
             }
         }
-        ctx.lock().unwrap().sqlite_conn.prepare_cached("COMMIT").unwrap().execute([]).unwrap();
+        ctx.lock()
+            .unwrap()
+            .sqlite_conn
+            .prepare_cached("COMMIT")
+            .unwrap()
+            .execute([])
+            .unwrap();
         fetch_state.save(&ctx.lock().unwrap()).await;
     }
 

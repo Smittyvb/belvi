@@ -22,6 +22,12 @@ struct Fetcher {
     client: reqwest::Client,
 }
 
+#[derive(Debug)]
+enum FetchError {
+    Reqwest(reqwest::Error),
+    BadStatus,
+}
+
 impl Fetcher {
     fn new() -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
@@ -40,38 +46,42 @@ impl Fetcher {
                 .unwrap(),
         }
     }
-    async fn fetch_sth(&self, log: &Log) -> Result<LogSth, reqwest::Error> {
-        self.client
+    async fn fetch_sth(&self, log: &Log) -> Result<LogSth, FetchError> {
+        Ok(self
+            .client
             .get(log.get_sth_url())
             .send()
-            .await?
+            .await
+            .map_err(FetchError::Reqwest)?
             .json()
             .await
+            .map_err(FetchError::Reqwest)?)
     }
     async fn fetch_entries(
         &self,
         log: &Log,
         start: u64,
         end: u64,
-    ) -> Result<Vec<GetEntriesItem>, reqwest::Error> {
+    ) -> Result<Vec<GetEntriesItem>, FetchError> {
         let resp = self
             .client
             .get(log.get_entries_url(start, end))
             .send()
-            .await?;
+            .await
+            .map_err(FetchError::Reqwest)?;
         if resp.status() != StatusCode::OK {
-            // TODO: proper error handling
-            // TODO: backoff after 429
-            panic!(
+            // TODO: proper backoff after 429
+            warn!(
                 "bad resp status {} while fetching {}-{} from \"{}\": {}",
                 resp.status().as_str(),
                 start,
                 end,
                 log.description,
-                resp.text().await?
+                resp.text().await.map_err(FetchError::Reqwest)?
             );
+            Err(FetchError::BadStatus)
         } else {
-            Ok(GetEntriesItem::parse(&resp.text().await?).unwrap())
+            Ok(GetEntriesItem::parse(&resp.text().await.map_err(FetchError::Reqwest)?).unwrap())
         }
     }
 }

@@ -5,6 +5,9 @@ use chrono::TimeZone;
 fn jan_1_2022() -> DateTime<Utc> {
     chrono::Utc.ymd(2022, 01, 01).and_hms(00, 00, 00)
 }
+fn jan_1_2023() -> DateTime<Utc> {
+    chrono::Utc.ymd(2023, 01, 01).and_hms(00, 00, 00)
+}
 
 #[test]
 fn argon2021() {
@@ -114,4 +117,5 @@ fn nimbus2022() {
     "#;
     let log = serde_json::from_str::<Log>(data).unwrap();
     assert!(log.has_active_certs(jan_1_2022()));
+    assert!(!log.has_active_certs(jan_1_2023()));
 }

@@ -102,7 +102,7 @@ impl Log {
     /// Is it possible that this log has unexpired certs that can be fetched?
     pub fn has_active_certs(&self, now: DateTime<Utc>) -> bool {
         if let Some(TemporalInterval {
-            start_inclusive: _,
+            start_inclusive,
             end_exclusive,
         }) = &self.temporal_interval
         {
@@ -111,7 +111,9 @@ impl Log {
             } else {
                 let end_exclusive =
                     DateTime::parse_from_rfc3339(end_exclusive).expect("invalid log data");
-                end_exclusive > now
+                let start_inclusive =
+                    DateTime::parse_from_rfc3339(start_inclusive).expect("invalid log data");
+                now >= start_inclusive && now < end_exclusive
             }
         } else {
             match self.state {

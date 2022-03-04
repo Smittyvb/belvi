@@ -206,24 +206,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     fetch_state.update_sths(&ctx).await;
     fetch_state.save(&ctx).await;
+    // TODO: use Tokio mutex
+    let fetch_state = Mutex::new(fetch_state);
 
     let mut active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
     let mut checked_logs: HashSet<String> = HashSet::new();
     let ctx = Mutex::new(ctx);
     while checked_logs.len() < active_logs.len() {
         fastrand::shuffle(&mut active_logs);
-        ctx.lock()
-            .unwrap()
-            .sqlite_conn
-            .prepare_cached("BEGIN DEFERRED")
-            .unwrap()
-            .execute([])
-            .unwrap();
+
+        {
+            ctx.lock()
+                .unwrap()
+                .sqlite_conn
+                .prepare_cached("BEGIN DEFERRED")
+                .unwrap()
+                .execute([])
+                .unwrap();
+        }
+        let mut futures = Vec::new();
+        let mut logs = Vec::new();
         for log in &active_logs {
             if checked_logs.contains(&log.log_id) {
                 continue;
             }
-            if let Some(count) = fetch_state.fetch_next_batch(&ctx, log).await {
+            futures.push(FetchState::fetch_next_batch(&fetch_state, &ctx, log));
+            logs.push(log);
+        }
+        for (idx, count) in futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .enumerate()
+        {
+            let log = logs[idx];
+            if let Some(count) = count {
                 info!("Fetched {} certs from \"{}\"", count, log.description);
             } else {
                 checked_logs.insert(log.log_id.clone());
@@ -236,7 +252,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
             .execute([])
             .unwrap();
-        fetch_state.save(&ctx.lock().unwrap()).await;
+        fetch_state.lock().unwrap().save(&ctx.lock().unwrap()).await;
     }
 
     Ok(())

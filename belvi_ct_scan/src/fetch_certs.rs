@@ -110,18 +110,29 @@ fn time_to_unix(time: Time) -> i64 {
 }
 
 impl<'ctx> FetchState {
-    pub async fn fetch_next_batch(&mut self, ctx: &Mutex<Ctx>, log: &Log) -> Option<u64> {
+    pub async fn fetch_next_batch(
+        self_mutex: &Mutex<Self>,
+        ctx: &Mutex<Ctx>,
+        log: &Log,
+    ) -> Option<u64> {
         info!("Fetching batch of certs from \"{}\"", log.description);
         let id = LogId(log.log_id.clone());
         let inner_ctx = ctx.lock().unwrap();
-        let next_batch = self.next_batch(&*inner_ctx, id.clone());
+        let next_batch = {
+            self_mutex
+                .lock()
+                .unwrap()
+                .next_batch(&*inner_ctx, id.clone())
+        };
         let certs_path = inner_ctx.certs_path.clone();
         trace!("Desired range is {:?}", next_batch);
         if let Some((start, end)) = next_batch {
             assert!(start <= end);
-            match inner_ctx.fetcher.fetch_entries(log, start, end).await {
+            let fetcher = inner_ctx.fetcher.clone();
+            let entries_future = fetcher.fetch_entries(log, start, end);
+            drop(inner_ctx);
+            match entries_future.await {
                 Ok(entries) => {
-                    drop(inner_ctx);
                     assert!(
                         !entries.is_empty(),
                         "CT log sent empty response to get-entries"
@@ -159,6 +170,7 @@ impl<'ctx> FetchState {
                             "INSERT OR IGNORE INTO domains (leaf_hash, domain) VALUES (?, ?)",
                         )
                         .unwrap();
+                    let mut files_to_write = Vec::new();
                     for (idx, entry) in entries.into_iter().enumerate() {
                         let idx: u64 = idx as u64 + start;
                         let log_timestamp = entry.leaf_input.timestamped_entry.timestamp;
@@ -224,15 +236,26 @@ impl<'ctx> FetchState {
                         // wrap in spawn to make it parallel instead of just concurrent
                         let file_path = certs_path.join(hex::encode(leaf_hash_bytes));
                         let file_contents = log_entry.inner_cert().clone();
-                        // TODO: parallelize
+                        files_to_write.push((file_path, file_contents));
+                    }
+                    drop(cert_insert);
+                    drop(entry_insert);
+                    drop(domain_insert);
+                    drop(inner_ctx);
+                    // TODO: parallelize
+                    for (file_path, file_contents) in files_to_write {
                         tokio::fs::write(file_path, file_contents)
                             .await
                             .expect("failed to save cert");
                     }
                     debug!("Fetched {}-{} from \"{}\"", start, end, log.description);
                     // adjust log_states
-                    let log_state = self.log_states.get_mut(&id).expect("no data for log");
-                    log_state.fetched_to = log_state.fetched_to.merge_fetched((start, end));
+                    {
+                        let mut self_inner = self_mutex.lock().unwrap();
+                        let log_state =
+                            self_inner.log_states.get_mut(&id).expect("no data for log");
+                        log_state.fetched_to = log_state.fetched_to.merge_fetched((start, end));
+                    }
                     Some(end - start + 1)
                 }
                 Err(err) => {

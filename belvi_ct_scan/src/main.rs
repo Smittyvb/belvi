@@ -47,15 +47,14 @@ impl Fetcher {
         }
     }
     async fn fetch_sth(&self, log: &Log) -> Result<LogSth, FetchError> {
-        Ok(self
-            .client
+        self.client
             .get(log.get_sth_url())
             .send()
             .await
             .map_err(FetchError::Reqwest)?
             .json()
             .await
-            .map_err(FetchError::Reqwest)?)
+            .map_err(FetchError::Reqwest)
     }
     async fn fetch_entries(
         &self,
@@ -224,7 +223,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if checked_logs.contains(&log.log_id) {
                 continue;
             }
-            if let Some(count) = fetch_state.fetch_next_batch(&ctx, &log).await {
+            if let Some(count) = fetch_state.fetch_next_batch(&ctx, log).await {
                 info!("Fetched {} certs from \"{}\"", count, log.description);
             } else {
                 checked_logs.insert(log.log_id.clone());

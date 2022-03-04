@@ -65,8 +65,7 @@ async fn get_root() -> impl IntoResponse {
                     .domain
                     .iter()
                     .map(render_domain)
-                    .fold(String::new(), |a, b| a + &b + "")
-                    .to_string();
+                    .fold(String::new(), |a, b| a + &b + "");
                 let logged_at = DateTime::<Utc>::from_utc(
                     NaiveDateTime::from_timestamp(self.ts / 1000, 0),
                     Utc,

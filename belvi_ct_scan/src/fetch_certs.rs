@@ -222,8 +222,7 @@ impl<'ctx> FetchState {
                                 .expect("failed to insert domain");
                         }
                         // wrap in spawn to make it parallel instead of just concurrent
-                        let file_path =
-                            certs_path.join(format!("{}", hex::encode(leaf_hash_bytes)));
+                        let file_path = certs_path.join(hex::encode(leaf_hash_bytes));
                         let file_contents = log_entry.inner_cert().clone();
                         // TODO: parallelize
                         tokio::fs::write(file_path, file_contents)

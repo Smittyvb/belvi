@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
-    extract::Path,
+    extract::{Path, Query},
     handler::Handler,
     http::StatusCode,
     response::{Headers, IntoResponse},
@@ -11,9 +11,10 @@ use axum::{
 use bcder::decode::Constructed;
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use rusqlite::{Connection, OpenFlags};
+use regex::Regex;
+use rusqlite::{functions::FunctionFlags, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, sync::Arc};
 
 const PRODUCT_NAME: &str = "Belvi";
 
@@ -27,7 +28,27 @@ thread_local! {
     static DB_CONN: Connection = {
         let db_path = get_data_path().join("data.db");
         // OPEN_CREATE isn't passed, so we don't create the DB if it doesn't exist
-        Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap()
+        let db = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+
+        // https://docs.rs/rusqlite/latest/rusqlite/functions/index.html
+        db.create_scalar_function("regex", 2, FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC, move |ctx| {
+            assert_eq!(ctx.len(), 2, "wrong argument count to regexp()");
+            let regexp: Arc<Regex> = ctx.get_or_create_aux(0, |vr| -> Result<_, Box<dyn std::error::Error + Send + Sync + 'static>> {
+                Ok(Regex::new(vr.as_str()?)?)
+            })?;
+            let is_match = {
+                let text = ctx
+                    .get_raw(1)
+                    .as_str()
+                    .map_err(|e| rusqlite::Error::UserFunctionError(e.into()))?;
+
+                regexp.is_match(text)
+            };
+
+            Ok(is_match)
+        }).unwrap();
+
+        db
     };
 }
 
@@ -39,7 +60,12 @@ fn format_date(date: DateTime<Utc>) -> String {
     date.format("%k:%M, %e %b %Y").html_escape()
 }
 
-async fn get_root() -> impl IntoResponse {
+#[derive(Debug, Deserialize)]
+struct RootQuery {
+    domain: Option<String>,
+}
+
+async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     DB_CONN.with(|db| {
         let count: usize = db
             .prepare_cached("SELECT count(domain) FROM domains")
@@ -47,7 +73,14 @@ async fn get_root() -> impl IntoResponse {
             .query_row([], |row| row.get(0))
             .unwrap();
         let mut certs_stmt = db.prepare_cached(include_str!("recent_certs.sql")).unwrap();
-        let mut certs_rows = certs_stmt.query([]).unwrap();
+        let mut certs_regex_stmt = db
+            .prepare_cached(include_str!("recent_certs_regex.sql"))
+            .unwrap();
+        let mut certs_rows = if let Some(domain) = &query.domain {
+            certs_regex_stmt.query([domain]).unwrap()
+        } else {
+            certs_stmt.query([]).unwrap()
+        };
         // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
         #[derive(Debug, Serialize, Deserialize)]
         struct CertData {

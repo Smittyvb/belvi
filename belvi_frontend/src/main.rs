@@ -68,7 +68,7 @@ struct RootQuery {
 async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     DB_CONN.with(|db| {
         let count: usize = db
-            .prepare_cached("SELECT count(domain) FROM domains")
+            .prepare_cached("SELECT count(*) FROM certs")
             .unwrap()
             .query_row([], |row| row.get(0))
             .unwrap();
@@ -160,7 +160,8 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 product_name = PRODUCT_NAME,
                 content = format_args!(
                     include_str!("tmpl/certs_list.html"),
-                    certs
+                    count = count,
+                    certs = certs
                         .iter()
                         .map(CertData::render)
                         .fold(String::new(), |a, b| a + &b)

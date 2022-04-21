@@ -12,7 +12,7 @@ use bcder::decode::Constructed;
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use regex::Regex;
-use rusqlite::{functions::FunctionFlags, Connection, OpenFlags};
+use rusqlite::{functions::FunctionFlags, params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf, sync::Arc};
 
@@ -52,17 +52,12 @@ thread_local! {
     };
 }
 
-fn render_domain(s: &String) -> String {
+fn render_domain(s: String) -> String {
     format!(r#"<div class="bvfront-domain">{}</div>"#, s.html_escape())
 }
 
 fn format_date(date: DateTime<Utc>) -> String {
     date.format("%k:%M, %e %b %Y").html_escape()
-}
-
-#[derive(Debug, Deserialize)]
-struct RootQuery {
-    domain: Option<String>,
 }
 
 fn html_headers() -> HeaderMap {
@@ -75,7 +70,20 @@ fn html_headers() -> HeaderMap {
     headers
 }
 
+#[derive(Debug, Deserialize)]
+struct RootQuery {
+    domain: Option<String>,
+    limit: Option<u32>,
+}
+
+const MAX_LIMIT: u32 = 1000;
+const DEFAULT_LIMIT: u32 = 100;
+
 async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
+    let limit = match query.limit {
+        Some(val @ 1..=MAX_LIMIT) => val,
+        _ => DEFAULT_LIMIT,
+    };
     DB_CONN.with(|db| {
         let count: usize = db
             .prepare_cached("SELECT count(*) FROM certs")
@@ -87,9 +95,9 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             .prepare_cached(include_str!("recent_certs_regex.sql"))
             .unwrap();
         let mut certs_rows = if let Some(domain) = &query.domain {
-            certs_regex_stmt.query([domain]).unwrap()
+            certs_regex_stmt.query(params![domain, limit]).unwrap()
         } else {
-            certs_stmt.query([]).unwrap()
+            certs_stmt.query([limit]).unwrap()
         };
         // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
         #[derive(Debug, Serialize, Deserialize)]
@@ -104,11 +112,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         }
         impl CertData {
             fn render(&self) -> String {
-                let domains = self
-                    .domain
-                    .iter()
-                    .map(render_domain)
-                    .fold(String::new(), |a, b| a + &b + "");
+                let domains = self.domain.iter().fold(String::new(), |a, b| a + &b + "");
                 let logged_at = DateTime::<Utc>::from_utc(
                     NaiveDateTime::from_timestamp(self.ts / 1000, 0),
                     Utc,
@@ -138,7 +142,13 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         }
         let mut certs = Vec::new();
         while let Ok(Some(val)) = certs_rows.next() {
-            let domain = val.get(3).unwrap();
+            let domain = match val.get(3) {
+                Ok(domain) => render_domain(domain),
+                Err(rusqlite::Error::InvalidColumnType(_, _, rusqlite::types::Type::Null)) => {
+                    "(none)".to_string()
+                }
+                other => panic!("unexpected domain fetching error {:?}", other),
+            };
             let leaf_hash = val.get(0).unwrap();
             if let Some(true) = certs
                 .last()

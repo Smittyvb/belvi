@@ -10,6 +10,11 @@ h1 {
     margin-left: -6px; /* large font sizes makes it pushed to right */
 }
 
+h1#bvfront-header > a {
+    color: inherit;
+    text-decoration: inherit;
+}
+
 h2 {
     margin: 0;
     font-size: 2em;

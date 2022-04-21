@@ -1710,9 +1710,9 @@ dependencies = [
 
 [[package]]
 name = "x509-certificate"
-version = "0.6.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4d5a5a04e3be0cd0dbf59eceaf99878d3df6d8856431e5bf17671ec0381718b"
+checksum = "ecce82ba1a532273edf6cd88d1efca9b3417fd24abe81baf143657909f7c12a8"
 dependencies = [
  "bcder",
  "bytes",

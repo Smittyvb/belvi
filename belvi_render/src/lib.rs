@@ -39,6 +39,18 @@ pub trait Render {
     fn render(&self) -> String;
 }
 
+impl<T> Render for Option<T>
+where
+    T: Render,
+{
+    fn render(&self) -> String {
+        match self {
+            Some(val) => val.render(),
+            None => r#"<span class="bvcert-empty">(none)</span>"#.to_string(),
+        }
+    }
+}
+
 impl Render for X509Certificate {
     fn render(&self) -> String {
         let cert: &Certificate = self.as_ref();

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+
 use super::{html_escape::HtmlEscapable, Render};
+use x509_certificate::asn1time::Time;
 
 impl Render for x509_certificate::asn1time::UtcTime {
     fn render(&self) -> String {
@@ -9,7 +11,7 @@ impl Render for x509_certificate::asn1time::UtcTime {
 
 impl Render for x509_certificate::asn1time::GeneralizedTime {
     fn render(&self) -> String {
-        (**self).render() // get inner chrono::DateTime
+        self.to_string()
     }
 }
 
@@ -23,9 +25,8 @@ impl Render for chrono::DateTime<chrono::Utc> {
     }
 }
 
-impl Render for x509_certificate::asn1time::Time {
+impl Render for Time {
     fn render(&self) -> String {
-        use x509_certificate::asn1time::Time;
         match self {
             Time::UtcTime(t) => t.render(),
             Time::GeneralTime(t) => t.render(),

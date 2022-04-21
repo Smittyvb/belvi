@@ -104,7 +104,7 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
 fn time_to_unix(time: Time) -> i64 {
     match time {
         Time::UtcTime(time) => *time,
-        Time::GeneralTime(time) => *time,
+        Time::GeneralTime(time) => time.into(),
     }
     .timestamp()
 }
@@ -206,8 +206,8 @@ impl<'ctx> FetchState {
                             log.description,
                             cert_type,
                             log_timestamp,
-                            not_before.as_ref(),
-                            not_after.as_ref()
+                            not_before,
+                            not_after,
                         );
                         // TODO: store cert
                         let leaf_hash_bytes = belvi_hash::db(log_entry.inner_cert());

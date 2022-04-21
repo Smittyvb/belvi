@@ -28,9 +28,14 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
         bcder::Oid,
         bcder::BitString,
         bcder::Integer,
-        x509_certificate::asn1time::GeneralizedTime,
         x509_certificate::asn1time::UtcTime,
     ];
+
+    if let Ok(thing) =
+        x509_certificate::asn1time::GeneralizedTime::take_from_allow_fractional_z(cons)
+    {
+        return Ok(thing.render());
+    }
 
     if let Ok(s) = cons.take_sequence(|subcons| {
         let mut table = Vec::new();

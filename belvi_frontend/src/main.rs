@@ -3,8 +3,8 @@
 use axum::{
     extract::{Path, Query},
     handler::Handler,
-    http::StatusCode,
-    response::{Headers, IntoResponse},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
+    response::IntoResponse,
     routing::get,
     Router,
 };
@@ -63,6 +63,16 @@ fn format_date(date: DateTime<Utc>) -> String {
 #[derive(Debug, Deserialize)]
 struct RootQuery {
     domain: Option<String>,
+}
+
+fn html_headers() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
+    headers.insert(
+        header::SERVER,
+        HeaderValue::from_static("belvi_frontend/1.0"),
+    );
+    headers
 }
 
 async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
@@ -150,10 +160,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         }
         (
             StatusCode::OK,
-            Headers([
-                ("Server", "belvi_frontend/1.0"),
-                ("Content-Type", "text/html"),
-            ]),
+            html_headers(),
             format!(
                 include_str!("tmpl/base.html"),
                 title = PRODUCT_NAME,
@@ -184,10 +191,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
             .expect("invalid cert in log");
             (
                 StatusCode::OK,
-                Headers([
-                    ("Server", "belvi_frontend/1.0"),
-                    ("Content-Type", "text/html"),
-                ]),
+                html_headers(),
                 format!(
                     include_str!("tmpl/base.html"),
                     title = PRODUCT_NAME,
@@ -203,10 +207,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
         }
         Err(_) => (
             StatusCode::NOT_FOUND,
-            Headers([
-                ("Server", "belvi_frontend/1.0"),
-                ("Content-Type", "text/html"),
-            ]),
+            html_headers(),
             format!(
                 include_str!("tmpl/base.html"),
                 title = PRODUCT_NAME,
@@ -222,10 +223,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
 async fn global_404() -> impl IntoResponse {
     (
         StatusCode::NOT_FOUND,
-        Headers([
-            ("Server", "belvi_frontend/1.0"),
-            ("Content-Type", "text/html"),
-        ]),
+        html_headers(),
         format!(
             include_str!("tmpl/base.html"),
             title = PRODUCT_NAME,

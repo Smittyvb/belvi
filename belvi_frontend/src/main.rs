@@ -187,7 +187,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
                 html_headers(),
                 format!(
                     include_str!("tmpl/base.html"),
-                    title = PRODUCT_NAME,
+                    title = format!("{} - certificate", PRODUCT_NAME),
                     product_name = PRODUCT_NAME,
                     content = cert.render(),
                     css = concat!(
@@ -203,7 +203,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
             html_headers(),
             format!(
                 include_str!("tmpl/base.html"),
-                title = PRODUCT_NAME,
+                title = format!("{} - not found", PRODUCT_NAME),
                 product_name = PRODUCT_NAME,
                 content = "Certificate not found.",
                 css = include_str!("tmpl/base.css"),
@@ -219,7 +219,7 @@ async fn global_404() -> impl IntoResponse {
         html_headers(),
         format!(
             include_str!("tmpl/base.html"),
-            title = PRODUCT_NAME,
+            title = format!("{} - not found", PRODUCT_NAME),
             product_name = PRODUCT_NAME,
             content = "Not found.",
             css = include_str!("tmpl/base.css"),

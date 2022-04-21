@@ -161,6 +161,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 content = format_args!(
                     include_str!("tmpl/certs_list.html"),
                     count = count,
+                    domain = query.domain.clone().unwrap_or_else(String::new),
                     certs = certs
                         .iter()
                         .map(CertData::render)

@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS log_entries (
 CREATE TABLE IF NOT EXISTS domains (
     -- TODO: also store reverse of domain to make *.com queries possible with < and >
     domain TEXT NOT NULL, -- normalized FQDN without trailing .
-    leaf_hash BLOB NOT NULL -- SHA256 of leaf data
+    leaf_hash BLOB NOT NULL, -- SHA256 of leaf data
+    FOREIGN KEY (leaf_hash) REFERENCES log_entries(leaf_hash)
 ); -- WITH ROWID
 
 -- CREATE INDICIES --

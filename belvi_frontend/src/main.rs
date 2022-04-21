@@ -11,10 +11,11 @@ use axum::{
 use bcder::decode::Constructed;
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use regex::Regex;
-use rusqlite::{functions::FunctionFlags, params, Connection, OpenFlags};
+use rusqlite::{params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
-use std::{env, path::PathBuf, sync::Arc};
+use std::{env, path::PathBuf};
+
+mod exts;
 
 const PRODUCT_NAME: &str = "Belvi";
 
@@ -28,26 +29,8 @@ thread_local! {
     static DB_CONN: Connection = {
         let db_path = get_data_path().join("data.db");
         // OPEN_CREATE isn't passed, so we don't create the DB if it doesn't exist
-        let db = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
-
-        // https://docs.rs/rusqlite/latest/rusqlite/functions/index.html
-        db.create_scalar_function("regex", 2, FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC, move |ctx| {
-            assert_eq!(ctx.len(), 2, "wrong argument count to regexp()");
-            let regexp: Arc<Regex> = ctx.get_or_create_aux(0, |vr| -> Result<_, Box<dyn std::error::Error + Send + Sync + 'static>> {
-                Ok(Regex::new(vr.as_str()?)?)
-            })?;
-            let is_match = {
-                let text = ctx
-                    .get_raw(1)
-                    .as_str()
-                    .map_err(|e| rusqlite::Error::UserFunctionError(e.into()))?;
-
-                regexp.is_match(text)
-            };
-
-            Ok(is_match)
-        }).unwrap();
-
+        let mut db = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+        exts::register(&mut db);
         db
     };
 }

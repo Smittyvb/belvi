@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use rusqlite::{functions::FunctionFlags, Connection};
 use std::sync::Arc;
 
@@ -15,7 +15,10 @@ pub fn register(db: &mut Connection) {
             let regex: Arc<Regex> = ctx.get_or_create_aux(
                 0,
                 |vr| -> Result<_, Box<dyn std::error::Error + Send + Sync + 'static>> {
-                    Ok(Regex::new(vr.as_str()?)?)
+                    Ok(RegexBuilder::new(vr.as_str()?)
+                        // certificates usually (but not always) write names in lowercase
+                        .case_insensitive(true)
+                        .build()?)
                 },
             )?;
             let is_match = {

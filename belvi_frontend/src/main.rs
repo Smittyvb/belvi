@@ -13,7 +13,7 @@ use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
-use std::{env, path::PathBuf};
+use std::{cmp::Ordering, env, path::PathBuf};
 
 mod exts;
 
@@ -73,7 +73,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             .prepare_cached(include_str!("recent_certs_regex.sql"))
             .unwrap();
         let mut certs_rows = if let Some(domain) = &query.domain {
-            certs_regex_stmt.query(params![domain, limit]).unwrap()
+            certs_regex_stmt.query(params![domain]).unwrap()
         } else {
             certs_stmt.query([limit]).unwrap()
         };
@@ -135,6 +135,15 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 // extension of last
                 certs.last_mut().unwrap().domain.push(domain);
             } else {
+                match certs.len().cmp(&(limit as usize)) {
+                    Ordering::Less => {}
+                    // regex matching would otherwise go forever
+                    Ordering::Equal => {
+                        assert!(query.domain.is_some());
+                        break;
+                    }
+                    Ordering::Greater => unreachable!(),
+                }
                 certs.push(CertData {
                     leaf_hash,
                     log_id: val.get(1).unwrap(),

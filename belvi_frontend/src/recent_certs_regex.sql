@@ -5,4 +5,3 @@ LEFT JOIN domains ON log_entries.leaf_hash = domains.leaf_hash
 LEFT JOIN certs ON log_entries.leaf_hash = certs.leaf_hash
 WHERE regex(?, domains.domain)
 ORDER BY log_entries.ts DESC
-LIMIT ?

@@ -173,11 +173,17 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
     let maybe_file = tokio::fs::read(get_data_path().join("certs").join(leaf_hash)).await;
     match maybe_file {
         Ok(cert) => {
-            // TODO: render as normal cert for non-precerts
-            let cert = Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+            // first try decoding as precert, then try normal cert
+            let cert = match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
                 x509_certificate::rfc5280::TbsCertificate::take_from(cons)
-            })
-            .expect("invalid cert in log");
+            }) {
+                Ok(tbs_cert) => tbs_cert.render(),
+                Err(_) => Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+                    x509_certificate::rfc5280::Certificate::take_from(cons)
+                })
+                .expect("invalid cert in log")
+                .render(),
+            };
             (
                 StatusCode::OK,
                 html_headers(),
@@ -185,7 +191,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
                     include_str!("tmpl/base.html"),
                     title = format!("{} - certificate", PRODUCT_NAME),
                     product_name = PRODUCT_NAME,
-                    content = cert.render(),
+                    content = cert,
                     css = concat!(
                         include_str!("tmpl/base.css"),
                         include_str!("../../belvi_render/bvcert.css")

@@ -68,11 +68,6 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         _ => DEFAULT_LIMIT,
     };
     DB_CONN.with(|db| {
-        let count: usize = db
-            .prepare_cached("SELECT count(*) FROM certs")
-            .unwrap()
-            .query_row([], |row| row.get(0))
-            .unwrap();
         let mut certs_stmt = db.prepare_cached(include_str!("recent_certs.sql")).unwrap();
         let mut certs_regex_stmt = db
             .prepare_cached(include_str!("recent_certs_regex.sql"))
@@ -160,7 +155,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 product_name = PRODUCT_NAME,
                 content = format_args!(
                     include_str!("tmpl/certs_list.html"),
-                    count = count,
+                    count = certs.len(),
                     domain = query.domain.clone().unwrap_or_else(String::new),
                     certs = certs
                         .iter()

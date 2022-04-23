@@ -135,7 +135,12 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             }
         }
         let mut certs = Vec::new();
-        while let Ok(Some(val)) = certs_rows.next() {
+        loop {
+            let val = match certs_rows.next() {
+                Ok(Some(val)) => val,
+                Ok(None) => break,
+                Err(e) => panic!("got error fetching certs {:#?}", e),
+            };
             let domain = match val.get(3) {
                 Ok(domain) => render_domain(domain),
                 Err(rusqlite::Error::InvalidColumnType(_, _, rusqlite::types::Type::Null)) => {

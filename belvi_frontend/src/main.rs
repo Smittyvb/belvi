@@ -43,13 +43,18 @@ fn format_date(date: DateTime<Utc>) -> String {
     date.format("%k:%M, %e %b %Y").html_escape()
 }
 
-fn html_headers() -> HeaderMap {
+fn base_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
-    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
     headers.insert(
         header::SERVER,
         HeaderValue::from_static("belvi_frontend/1.0"),
     );
+    headers
+}
+
+fn html_headers() -> HeaderMap {
+    let mut headers = base_headers();
+    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
     headers
 }
 
@@ -63,10 +68,21 @@ const MAX_LIMIT: u32 = 1000;
 const DEFAULT_LIMIT: u32 = 100;
 
 async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
+    // redirect simple regex queries that match everything or nothing
+    if let Some(domain) = &query.domain {
+        let domain = domain.trim();
+        if domain == "" || domain == "^" || domain == "$" || domain == "^$" {
+            let mut headers = base_headers();
+            headers.insert("Location", HeaderValue::from_static("/"));
+            return (StatusCode::FOUND, headers, String::new());
+        }
+    };
+
     let limit = match query.limit {
         Some(val @ 1..=MAX_LIMIT) => val,
         _ => DEFAULT_LIMIT,
     };
+
     DB_CONN.with(|db| {
         let mut certs_stmt = db.prepare_cached(include_str!("recent_certs.sql")).unwrap();
         let mut certs_regex_stmt = db

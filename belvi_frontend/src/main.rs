@@ -13,7 +13,7 @@ use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, env, path::PathBuf};
+use std::{cmp::Ordering, env, path::PathBuf, time::Instant};
 
 mod exts;
 
@@ -84,6 +84,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     };
 
     DB_CONN.with(|db| {
+        let start = Instant::now();
         let mut certs_stmt = db.prepare_cached(include_str!("recent_certs.sql")).unwrap();
         let mut certs_regex_stmt = db
             .prepare_cached(include_str!("recent_certs_regex.sql"))
@@ -190,10 +191,11 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                     certs = certs
                         .iter()
                         .map(CertData::render)
-                        .fold(String::new(), |a, b| a + &b)
+                        .fold(String::new(), |a, b| a + &b),
+                    time = (Instant::now() - start).as_secs_f64(),
                 ),
                 css = include_str!("tmpl/base.css"),
-                script = include_str!("tmpl/dates.js")
+                script = include_str!("tmpl/dates.js"),
             ),
         )
     })

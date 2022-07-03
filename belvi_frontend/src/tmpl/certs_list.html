@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <h2>All certificates</h2>
-<div class="count">{count} certificates</div>
+<div class="bvfront-count">{count} certificates</div>
 <form method="GET" action="/" class="bvfront-form">
     <label for="domain">Filter domains: </label><input type="text" name="domain" value="{domain}">
 </form>
@@ -10,3 +10,4 @@
     </thead>
     <tbody>{certs}</tbody>
 </table>
+<div class="bvfront-search-time">Searched in {time} seconds.</div>

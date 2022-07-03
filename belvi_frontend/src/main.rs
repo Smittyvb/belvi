@@ -64,7 +64,7 @@ struct RootQuery {
     limit: Option<u32>,
 }
 
-const MAX_LIMIT: u32 = 1000;
+const MAX_LIMIT: u32 = 200;
 const DEFAULT_LIMIT: u32 = 100;
 
 async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {

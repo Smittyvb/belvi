@@ -107,7 +107,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         }
         impl CertData {
             fn render(&self) -> String {
-                let domains = self.domain.iter().fold(String::new(), |a, b| a + &b + "");
+                let domains = self.domain.iter().fold(String::new(), |a, b| a + b + "");
                 let logged_at = DateTime::<Utc>::from_utc(
                     NaiveDateTime::from_timestamp(self.ts / 1000, 0),
                     Utc,
@@ -221,7 +221,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
                 html_headers(),
                 format!(
                     include_str!("tmpl/base.html"),
-                    title = format!("{} - certificate", PRODUCT_NAME),
+                    title = format_args!("{} - certificate", PRODUCT_NAME),
                     product_name = PRODUCT_NAME,
                     content = cert,
                     css = concat!(
@@ -237,7 +237,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
             html_headers(),
             format!(
                 include_str!("tmpl/base.html"),
-                title = format!("{} - not found", PRODUCT_NAME),
+                title = format_args!("{} - not found", PRODUCT_NAME),
                 product_name = PRODUCT_NAME,
                 content = "Certificate not found.",
                 css = include_str!("tmpl/base.css"),
@@ -253,7 +253,7 @@ async fn global_404() -> impl IntoResponse {
         html_headers(),
         format!(
             include_str!("tmpl/base.html"),
-            title = format!("{} - not found", PRODUCT_NAME),
+            title = format_args!("{} - not found", PRODUCT_NAME),
             product_name = PRODUCT_NAME,
             content = "Not found.",
             css = include_str!("tmpl/base.css"),

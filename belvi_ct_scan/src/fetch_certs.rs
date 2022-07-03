@@ -61,7 +61,6 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
         for attr in &**subject {
             // 2.5.4.3 is OID for commonName
             if attr.typ.as_ref() == [85, 4, 3] {
-                // domains.insert(ber_to_string((**attr.value).clone()));
                 let next_dom =
                     Constructed::decode((**attr.value).clone(), bcder::Mode::Ber, take_tagged_ber);
                 if let Ok(dom) = next_dom {
@@ -72,13 +71,12 @@ fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
     }
     if let Some(exts) = &cert.extensions {
         for ext in &**exts {
-            // 2.5.29.17  is OID for subjectAltName
+            // 2.5.29.17 is OID for subjectAltName
             if ext.id.as_ref() == [85, 29, 17] {
                 let doms = Constructed::decode(ext.value.to_bytes(), bcder::Mode::Ber, |cons| {
                     cons.take_sequence(|subcons| {
                         let mut doms = Vec::new();
                         loop {
-                            // let next_dom = ;
                             match take_tagged_ber(subcons) {
                                 Ok(dom) => doms.push(dom),
                                 Err(decode::Error::Malformed) => break,

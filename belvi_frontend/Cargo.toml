@@ -15,7 +15,7 @@ rusqlite = { version = "0.27.0", features = ["functions"] }
 chrono = "0.4.19"
 serde = { version = "1.0.136", features = ["derive"]}
 serde_json = "1.0.78"
-x509-certificate = "0.12.0"
+x509-certificate = "0.13.0"
 bcder = "0.6.1"
 hex = "0.4.3"
 regex = "1.5.5"

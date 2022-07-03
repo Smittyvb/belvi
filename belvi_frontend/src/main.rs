@@ -92,7 +92,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         let mut certs_rows = if let Some(domain) = &query.domain {
             certs_regex_stmt.query(params![domain]).unwrap()
         } else {
-            certs_stmt.query([limit]).unwrap()
+            certs_stmt.query([]).unwrap()
         };
         // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
         #[derive(Debug, Serialize, Deserialize)]
@@ -160,10 +160,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 match certs.len().cmp(&(limit as usize)) {
                     Ordering::Less => {}
                     // regex matching would otherwise go forever
-                    Ordering::Equal => {
-                        assert!(query.domain.is_some());
-                        break;
-                    }
+                    Ordering::Equal => break,
                     Ordering::Greater => unreachable!(),
                 }
                 certs.push(CertData {

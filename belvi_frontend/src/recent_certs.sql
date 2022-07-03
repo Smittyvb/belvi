@@ -5,6 +5,5 @@ FROM (
     FROM log_entries
     LEFT JOIN certs ON log_entries.leaf_hash = certs.leaf_hash
     ORDER BY log_entries.ts DESC
-    LIMIT ?
 )
 LEFT JOIN domains ON log_entries_leaf_hash = domains.leaf_hash

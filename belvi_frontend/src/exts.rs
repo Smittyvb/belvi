@@ -21,16 +21,11 @@ pub fn register(db: &mut Connection) {
                         .build()?)
                 },
             )?;
-            let is_match = {
-                let text = ctx
-                    .get_raw(1)
-                    .as_str()
-                    .map_err(|e| rusqlite::Error::UserFunctionError(e.into()))?;
-
-                regex.is_match(text)
-            };
-
-            Ok(is_match)
+            Ok(match ctx.get_raw(1).as_str() {
+                Ok(text) => regex.is_match(text),
+                Err(rusqlite::types::FromSqlError::InvalidType) => false,
+                Err(e) => panic!("unexpected error {:#?}", e),
+            })
         },
     )
     .unwrap();

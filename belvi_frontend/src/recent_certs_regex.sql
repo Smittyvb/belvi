@@ -4,4 +4,4 @@ FROM domains
 LEFT JOIN log_entries ON log_entries.leaf_hash = domains.leaf_hash
 LEFT JOIN certs ON log_entries.leaf_hash = certs.leaf_hash
 WHERE regex(?, domains.domain)
-ORDER BY log_entries.ts DESC
+ORDER BY log_entries.ts DESC -- this is slow when there are a lot of results since a bunch need to be reordered

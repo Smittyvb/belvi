@@ -61,8 +61,9 @@ mod test {
             assert_eq!(val, matches);
         }
         assert_match(&mut db, "regex('a', 'b')", false);
-        assert_match(&mut db, "regex('a', 'a')", true);
-        assert_match(&mut db, "regex('bc', 'abcd')", true);
+        assert_match(&mut db, "regex('a', 'B')", false);
+        assert_match(&mut db, "regex('a', 'A')", true);
+        assert_match(&mut db, "regex('bc', 'AbCd')", true);
         assert_match(&mut db, "regex('^b', 'bcd')", true);
         assert_match(&mut db, "regex('c', 'bcd')", true);
         assert_match(&mut db, "regex('^c', 'bcd')", false);

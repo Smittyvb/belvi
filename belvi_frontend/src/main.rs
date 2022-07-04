@@ -219,6 +219,22 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     })
 }
 
+fn not_found(thing: &'static str) -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        html_headers(),
+        format!(
+            include_str!("tmpl/base.html"),
+            title = format_args!("{} - not found", PRODUCT_NAME),
+            product_name = PRODUCT_NAME,
+            content = format_args!("{} not found.", thing),
+            css = include_str!("tmpl/base.css"),
+            script = ""
+        ),
+    )
+        .into_response()
+}
+
 async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
     let maybe_file = tokio::fs::read(get_data_path().join("certs").join(leaf_hash)).await;
     match maybe_file {
@@ -249,35 +265,14 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
                     script = include_str!("tmpl/dates.js")
                 ),
             )
+                .into_response()
         }
-        Err(_) => (
-            StatusCode::NOT_FOUND,
-            html_headers(),
-            format!(
-                include_str!("tmpl/base.html"),
-                title = format_args!("{} - not found", PRODUCT_NAME),
-                product_name = PRODUCT_NAME,
-                content = "Certificate not found.",
-                css = include_str!("tmpl/base.css"),
-                script = ""
-            ),
-        ),
+        Err(_) => not_found("Certificate"),
     }
 }
 
 async fn global_404() -> impl IntoResponse {
-    (
-        StatusCode::NOT_FOUND,
-        html_headers(),
-        format!(
-            include_str!("tmpl/base.html"),
-            title = format_args!("{} - not found", PRODUCT_NAME),
-            product_name = PRODUCT_NAME,
-            content = "Not found.",
-            css = include_str!("tmpl/base.css"),
-            script = ""
-        ),
-    )
+    not_found("Page")
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]

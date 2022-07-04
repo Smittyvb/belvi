@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-use regex::{Regex, RegexBuilder};
+use regex::bytes::{Regex, RegexBuilder};
 use rusqlite::{functions::FunctionFlags, Connection};
 use std::sync::Arc;
 
@@ -22,7 +22,7 @@ pub fn register(db: &mut Connection) {
                 },
             )?;
             Ok(match ctx.get_raw(1).as_str() {
-                Ok(text) => regex.is_match(text),
+                Ok(text) => regex.is_match(text.as_bytes()),
                 Err(rusqlite::types::FromSqlError::InvalidType) => false,
                 Err(e) => panic!("unexpected error {:#?}", e),
             })

@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, Query},
     handler::Handler,
     http::{header, HeaderMap, HeaderValue, StatusCode},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -67,6 +67,25 @@ struct RootQuery {
 const MAX_LIMIT: u32 = 200;
 const DEFAULT_LIMIT: u32 = 100;
 
+fn error(e: Option<String>) -> Response {
+    (
+        StatusCode::BAD_REQUEST,
+        html_headers(),
+        format!(
+            include_str!("tmpl/base.html"),
+            title = format_args!("{} - error", PRODUCT_NAME),
+            product_name = PRODUCT_NAME,
+            content = format_args!(
+                include_str!("tmpl/error.html"),
+                e.unwrap_or_else(|| "Your request could not be processed at this time".to_string())
+            ),
+            css = include_str!("tmpl/base.css"),
+            script = "",
+        ),
+    )
+        .into_response()
+}
+
 async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     // redirect simple regex queries that match everything or nothing
     if let Some(domain) = &query.domain {
@@ -74,7 +93,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         if domain == "" || domain == "^" || domain == "$" || domain == "^$" {
             let mut headers = base_headers();
             headers.insert("Location", HeaderValue::from_static("/"));
-            return (StatusCode::FOUND, headers, String::new());
+            return (StatusCode::FOUND, headers, String::new()).into_response();
         }
     };
 
@@ -140,7 +159,8 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             let val = match certs_rows.next() {
                 Ok(Some(val)) => val,
                 Ok(None) => break,
-                Err(e) => panic!("got error fetching certs {:#?}", e),
+                Err(rusqlite::Error::SqliteFailure(_, err)) => return error(err),
+                Err(e) => panic!("unexpected error fetching certs {:#?}", e),
             };
             let domain = match val.get(3) {
                 Ok(domain) => render_domain(domain),
@@ -195,6 +215,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 script = include_str!("tmpl/dates.js"),
             ),
         )
+            .into_response()
     })
 }
 

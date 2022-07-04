@@ -106,6 +106,15 @@ main {
     color: inherit;
 }
 
+.bvfront-error {
+    white-space: pre;
+    font-family: monospace;
+    background: #ffc3c3;
+    border: 2px solid red;
+    padding: 1em;
+    width: max-content;
+}
+
 main > .bvcert-kv-table {
     border: none;
 }

@@ -1,11 +1,5 @@
 -- SPDX-License-Identifier: Apache-2.0
--- Run every time the SQLite database is loaded.
-
--- CONFIGURE SQLITE --
-PRAGMA journal_mode = WAL;
-PRAGMA encoding = 'UTF-8';
-PRAGMA user_version = 1;
-PRAGMA case_sensitive_like = ON; -- by default LIKE ignores case
+-- Run every time the SQLite database is loaded in a writable context.
 
 BEGIN;
 

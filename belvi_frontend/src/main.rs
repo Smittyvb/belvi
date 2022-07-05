@@ -11,7 +11,7 @@ use axum::{
 use bcder::decode::Constructed;
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use rusqlite::{params, Connection, OpenFlags};
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, env, path::PathBuf, time::Instant};
 
@@ -29,7 +29,9 @@ thread_local! {
     static DB_CONN: Connection = {
         let db_path = get_data_path().join("data.db");
         // OPEN_CREATE isn't passed, so we don't create the DB if it doesn't exist
-        let mut db = Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+        let mut db = Connection::open(db_path).unwrap();
+        // this can write to the database so we can't open it as readonly
+        db.execute_batch(include_str!("../../shared_sql/init_db.sql")).unwrap();
         exts::register(&mut db);
         db
     };

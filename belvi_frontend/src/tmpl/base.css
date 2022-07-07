@@ -128,3 +128,27 @@ main > .bvcert-kv-table > tbody > tr > th, main > .bvcert-kv-table > tbody > tr 
     padding-top: .5em;
     padding-bottom: .5em;
 }
+
+.bvfront-cert-list-no-results {
+    width: 11em;
+    background: rgb(199, 199, 199);
+    height: 11em;
+    border-radius: 50%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    font-size: 1.5em;
+}
+
+.bvfront-cert-frown-text {
+    height: 35%;
+}
+
+.bvfront-frown {
+    font-size: 4.5em;
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+    height: 65%;
+}

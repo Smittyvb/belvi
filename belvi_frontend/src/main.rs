@@ -198,6 +198,12 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 });
             }
         }
+        let run_time = (Instant::now() - start).as_secs_f64();
+        let domain = query
+            .domain
+            .clone()
+            .unwrap_or_else(|| "^".to_string())
+            .html_escape();
         (
             StatusCode::OK,
             html_headers(),
@@ -205,20 +211,24 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 include_str!("tmpl/base.html"),
                 title = PRODUCT_NAME,
                 product_name = PRODUCT_NAME,
-                content = format_args!(
-                    include_str!("tmpl/certs_list.html"),
-                    count = certs.len(),
-                    domain = query
-                        .domain
-                        .clone()
-                        .unwrap_or_else(|| "^".to_string())
-                        .html_escape(),
-                    certs = certs
-                        .iter()
-                        .map(CertData::render)
-                        .fold(String::new(), |a, b| a + &b),
-                    time = (Instant::now() - start).as_secs_f64(),
-                ),
+                content = if certs.is_empty() {
+                    format!(
+                        include_str!("tmpl/no_results.html"),
+                        domain = domain,
+                        time = run_time,
+                    )
+                } else {
+                    format!(
+                        include_str!("tmpl/certs_list.html"),
+                        count = certs.len(),
+                        domain = domain,
+                        certs = certs
+                            .iter()
+                            .map(CertData::render)
+                            .fold(String::new(), |a, b| a + &b),
+                        time = run_time,
+                    )
+                },
                 css = include_str!("tmpl/base.css"),
                 script = include_str!("tmpl/dates.js"),
             ),

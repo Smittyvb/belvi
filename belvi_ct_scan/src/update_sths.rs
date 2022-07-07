@@ -7,11 +7,12 @@ impl FetchState {
         info!("Fetching all log STHs");
         // TODO: in parallel
         for log in ctx.active_logs() {
-            let new_sth = ctx
-                .fetcher
-                .fetch_sth(log)
-                .await
-                .expect("Failed to fetch log STH, bailing");
+            let new_sth = ctx.fetcher.fetch_sth(log).await.unwrap_or_else(|err| {
+                panic!(
+                    "Failed to fetch log STH for \"{}\", bailing: {:?}",
+                    log.description, err,
+                )
+            });
             trace!("Fetching STH for \"{}\"", log.description);
             let log_id = LogId(log.log_id.clone());
             match self.log_states.get_mut(&log_id) {

@@ -23,9 +23,14 @@ struct Fetcher {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)] // Debug trait is ignored for dead code analysis, but some fields are only here for better messages
 enum FetchError {
     Reqwest(reqwest::Error),
     BadStatus,
+    DeserializeError {
+        serde_error: serde_json::Error,
+        input: bytes::Bytes,
+    },
 }
 
 impl Fetcher {
@@ -47,14 +52,20 @@ impl Fetcher {
         }
     }
     async fn fetch_sth(&self, log: &Log) -> Result<LogSth, FetchError> {
-        self.client
+        let res = self
+            .client
             .get(log.get_sth_url())
             .send()
             .await
-            .map_err(FetchError::Reqwest)?
-            .json()
-            .await
-            .map_err(FetchError::Reqwest)
+            .map_err(FetchError::Reqwest)?;
+        let bytes = res.bytes().await.map_err(FetchError::Reqwest)?;
+        match serde_json::from_slice(&bytes) {
+            Ok(v) => Ok(v),
+            Err(serde_error) => Err(FetchError::DeserializeError {
+                serde_error,
+                input: bytes,
+            }),
+        }
     }
     async fn fetch_entries(
         &self,

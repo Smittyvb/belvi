@@ -14,6 +14,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, env, path::PathBuf, time::Instant};
+use tokio::task;
 
 mod exts;
 
@@ -104,139 +105,143 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         _ => DEFAULT_LIMIT,
     };
 
-    DB_CONN.with(|db| {
-        let start = Instant::now();
-        let mut certs_stmt = db
-            .prepare_cached(include_str!("queries/recent_certs.sql"))
-            .unwrap();
-        let mut certs_regex_stmt = db
-            .prepare_cached(include_str!("queries/recent_certs_regex.sql"))
-            .unwrap();
-        // TODO: don't block here, execute SQL on other thread
-        // https://users.rust-lang.org/t/using-sqlite-asynchronously/39658?u=smitop
-        let mut certs_rows = if let Some(domain) = &query.domain {
-            certs_regex_stmt.query(params![domain]).unwrap()
-        } else {
-            certs_stmt.query([]).unwrap()
-        };
-        // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
-        #[derive(Debug, Serialize, Deserialize)]
-        struct CertData {
-            leaf_hash: Vec<u8>,
-            log_id: u32,
-            ts: i64,
-            domain: Vec<String>,
-            extra_hash: Vec<u8>,
-            not_before: i64,
-            not_after: i64,
-        }
-        impl CertData {
-            fn render(&self) -> String {
-                let domains = self.domain.iter().fold(String::new(), |a, b| a + b + "");
-                let logged_at = DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(self.ts / 1000, 0),
-                    Utc,
-                );
-                let not_before = DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(self.not_before, 0),
-                    Utc,
-                );
-                let not_after = DateTime::<Utc>::from_utc(
-                    NaiveDateTime::from_timestamp(self.not_after, 0),
-                    Utc,
-                );
-                format!(
-                    include_str!("tmpl/cert.html"),
-                    domains = domains,
-                    ts3339 = logged_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    ts = format_date(logged_at),
-                    not_before3339 =
-                        not_before.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    not_before = format_date(not_before),
-                    not_after3339 = not_after.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                    not_after = format_date(not_after),
-                    json = serde_json::to_string(self).unwrap().html_escape(),
-                    cert_link = hex::encode(&self.leaf_hash),
-                )
-            }
-        }
-        let mut certs = Vec::new();
-        loop {
-            let val = match certs_rows.next() {
-                Ok(Some(val)) => val,
-                Ok(None) => break,
-                Err(rusqlite::Error::SqliteFailure(_, err)) => return error(err),
-                Err(e) => panic!("unexpected error fetching certs {:#?}", e),
-            };
-            let domain = match val.get(3) {
-                Ok(domain) => render_domain(domain),
-                Err(rusqlite::Error::InvalidColumnType(_, _, rusqlite::types::Type::Null)) => {
-                    "(none)".to_string()
-                }
-                other => panic!("unexpected domain fetching error {:?}", other),
-            };
-            let leaf_hash = val.get(0).unwrap();
-            if let Some(true) = certs
-                .last()
-                .map(|last: &CertData| last.leaf_hash == leaf_hash)
-            {
-                // extension of last
-                certs.last_mut().unwrap().domain.push(domain);
+    task::spawn_blocking(move || {
+        DB_CONN.with(|db| {
+            let start = Instant::now();
+            let mut certs_stmt = db
+                .prepare_cached(include_str!("queries/recent_certs.sql"))
+                .unwrap();
+            let mut certs_regex_stmt = db
+                .prepare_cached(include_str!("queries/recent_certs_regex.sql"))
+                .unwrap();
+            let mut certs_rows = if let Some(domain) = &query.domain {
+                certs_regex_stmt.query(params![domain]).unwrap()
             } else {
-                match certs.len().cmp(&(limit as usize)) {
-                    Ordering::Less => {}
-                    // regex matching would otherwise go forever
-                    Ordering::Equal => break,
-                    Ordering::Greater => unreachable!(),
-                }
-                certs.push(CertData {
-                    leaf_hash,
-                    log_id: val.get(1).unwrap(),
-                    ts: val.get(2).unwrap(),
-                    domain: vec![domain],
-                    extra_hash: val.get(4).unwrap(),
-                    not_before: val.get(5).unwrap(),
-                    not_after: val.get(6).unwrap(),
-                });
+                certs_stmt.query([]).unwrap()
+            };
+
+            // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
+            #[derive(Debug, Serialize, Deserialize)]
+            struct CertData {
+                leaf_hash: Vec<u8>,
+                log_id: u32,
+                ts: i64,
+                domain: Vec<String>,
+                extra_hash: Vec<u8>,
+                not_before: i64,
+                not_after: i64,
             }
-        }
-        let run_time = (Instant::now() - start).as_secs_f64();
-        let domain = query
-            .domain
-            .clone()
-            .unwrap_or_else(|| "^".to_string())
-            .html_escape();
-        (
-            StatusCode::OK,
-            html_headers(),
-            format!(
-                include_str!("tmpl/base.html"),
-                title = PRODUCT_NAME,
-                product_name = PRODUCT_NAME,
-                content = if certs.is_empty() {
+            impl CertData {
+                fn render(&self) -> String {
+                    let domains = self.domain.iter().fold(String::new(), |a, b| a + b + "");
+                    let logged_at = DateTime::<Utc>::from_utc(
+                        NaiveDateTime::from_timestamp(self.ts / 1000, 0),
+                        Utc,
+                    );
+                    let not_before = DateTime::<Utc>::from_utc(
+                        NaiveDateTime::from_timestamp(self.not_before, 0),
+                        Utc,
+                    );
+                    let not_after = DateTime::<Utc>::from_utc(
+                        NaiveDateTime::from_timestamp(self.not_after, 0),
+                        Utc,
+                    );
                     format!(
-                        include_str!("tmpl/no_results.html"),
-                        domain = domain,
-                        time = run_time,
+                        include_str!("tmpl/cert.html"),
+                        domains = domains,
+                        ts3339 = logged_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                        ts = format_date(logged_at),
+                        not_before3339 =
+                            not_before.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                        not_before = format_date(not_before),
+                        not_after3339 =
+                            not_after.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                        not_after = format_date(not_after),
+                        json = serde_json::to_string(self).unwrap().html_escape(),
+                        cert_link = hex::encode(&self.leaf_hash),
                     )
+                }
+            }
+            let mut certs = Vec::new();
+            loop {
+                let val = match certs_rows.next() {
+                    Ok(Some(val)) => val,
+                    Ok(None) => break,
+                    Err(rusqlite::Error::SqliteFailure(_, err)) => return error(err),
+                    Err(e) => panic!("unexpected error fetching certs {:#?}", e),
+                };
+                let domain = match val.get(3) {
+                    Ok(domain) => render_domain(domain),
+                    Err(rusqlite::Error::InvalidColumnType(_, _, rusqlite::types::Type::Null)) => {
+                        "(none)".to_string()
+                    }
+                    other => panic!("unexpected domain fetching error {:?}", other),
+                };
+                let leaf_hash = val.get(0).unwrap();
+                if let Some(true) = certs
+                    .last()
+                    .map(|last: &CertData| last.leaf_hash == leaf_hash)
+                {
+                    // extension of last
+                    certs.last_mut().unwrap().domain.push(domain);
                 } else {
-                    format!(
-                        include_str!("tmpl/certs_list.html"),
-                        count = certs.len(),
-                        domain = domain,
-                        certs = certs
-                            .iter()
-                            .map(CertData::render)
-                            .fold(String::new(), |a, b| a + &b),
-                        time = run_time,
-                    )
-                },
-                css = include_str!("tmpl/base.css"),
-                script = include_str!("tmpl/dates.js"),
-            ),
-        )
-            .into_response()
+                    match certs.len().cmp(&(limit as usize)) {
+                        Ordering::Less => {}
+                        // regex matching would otherwise go forever
+                        Ordering::Equal => break,
+                        Ordering::Greater => unreachable!(),
+                    }
+                    certs.push(CertData {
+                        leaf_hash,
+                        log_id: val.get(1).unwrap(),
+                        ts: val.get(2).unwrap(),
+                        domain: vec![domain],
+                        extra_hash: val.get(4).unwrap(),
+                        not_before: val.get(5).unwrap(),
+                        not_after: val.get(6).unwrap(),
+                    });
+                }
+            }
+            let run_time = (Instant::now() - start).as_secs_f64();
+            let domain = query
+                .domain
+                .clone()
+                .unwrap_or_else(|| "^".to_string())
+                .html_escape();
+            (
+                StatusCode::OK,
+                html_headers(),
+                format!(
+                    include_str!("tmpl/base.html"),
+                    title = PRODUCT_NAME,
+                    product_name = PRODUCT_NAME,
+                    content = if certs.is_empty() {
+                        format!(
+                            include_str!("tmpl/no_results.html"),
+                            domain = domain,
+                            time = run_time,
+                        )
+                    } else {
+                        format!(
+                            include_str!("tmpl/certs_list.html"),
+                            count = certs.len(),
+                            domain = domain,
+                            certs = certs
+                                .iter()
+                                .map(CertData::render)
+                                .fold(String::new(), |a, b| a + &b),
+                            time = run_time,
+                        )
+                    },
+                    css = include_str!("tmpl/base.css"),
+                    script = include_str!("tmpl/dates.js"),
+                ),
+            )
+                .into_response()
+        })
     })
+    .await
+    .unwrap()
 }
 
 fn not_found(thing: &'static str) -> Response {

@@ -106,9 +106,11 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
 
     DB_CONN.with(|db| {
         let start = Instant::now();
-        let mut certs_stmt = db.prepare_cached(include_str!("recent_certs.sql")).unwrap();
+        let mut certs_stmt = db
+            .prepare_cached(include_str!("queries/recent_certs.sql"))
+            .unwrap();
         let mut certs_regex_stmt = db
-            .prepare_cached(include_str!("recent_certs_regex.sql"))
+            .prepare_cached(include_str!("queries/recent_certs_regex.sql"))
             .unwrap();
         // TODO: don't block here, execute SQL on other thread
         // https://users.rust-lang.org/t/using-sqlite-asynchronously/39658?u=smitop

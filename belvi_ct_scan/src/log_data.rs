@@ -144,6 +144,7 @@ pub enum LogEntry {
 }
 
 impl LogEntry {
+    #[must_use]
     pub fn inner_cert(&self) -> &Vec<u8> {
         match self {
             Self::X509(cert)
@@ -153,6 +154,7 @@ impl LogEntry {
             } => cert,
         }
     }
+    #[must_use]
     pub fn num(&self) -> u8 {
         match self {
             Self::X509(_) => 1,

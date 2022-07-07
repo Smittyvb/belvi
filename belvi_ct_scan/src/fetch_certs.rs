@@ -191,9 +191,7 @@ impl<'ctx> FetchState {
                         };
 
                         let domains = get_cert_domains(&cert);
-                        if domains.contains(&b"&".to_vec()) {
-                            panic!("{:#?}", cert);
-                        }
+                        assert!(!domains.contains(&b"&".to_vec()), "{:#?}", cert);
 
                         let validity = &cert.validity;
                         let not_before = validity.not_before.clone();

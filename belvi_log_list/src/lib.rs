@@ -64,6 +64,7 @@ pub struct TreeHead {
 
 macro_rules! api_endpoint {
     ($path:literal , $fname:ident) => {
+        #[must_use]
         pub fn $fname(&self) -> String {
             format!("{}{}", self.url, concat!("ct/v1/", $path))
         }
@@ -77,15 +78,18 @@ impl Log {
     api_endpoint!("get-sth", get_sth_url);
     api_endpoint!("get-roots", get_roots_url);
 
+    #[must_use]
     pub fn get_sth_consistency_url(&self, first: TreeSize, second: TreeSize) -> String {
         format!(
             "{}ct/v1/get-sth-consistency?first={}&second={}",
             self.url, first, second
         )
     }
+    #[must_use]
     pub fn get_entries_url(&self, start: TreeSize, end: u64) -> String {
         format!("{}ct/v1/get-entries?start={}&end={}", self.url, start, end)
     }
+    #[must_use]
     pub fn get_proof_by_hash_url(&self, hash: String, tree_size: TreeSize) -> String {
         format!(
             "{}ct/v1/get-proof-by-hash?hash={}&tree_size={}",
@@ -100,6 +104,7 @@ impl Log {
     }
 
     /// Is it possible that this log has unexpired certs that can be fetched?
+    #[must_use]
     pub fn has_active_certs(&self, now: DateTime<Utc>) -> bool {
         if let Some(TemporalInterval {
             start_inclusive,
@@ -145,11 +150,13 @@ impl Log {
 }
 
 impl LogList {
+    #[must_use]
     pub fn google() -> Self {
         serde_json::from_str(include_str!("../log_list.json")).unwrap()
     }
 
     /// Returns an iterator of all logs run by all log operators.
+    #[must_use]
     pub fn logs(&self) -> impl Iterator<Item = &Log> {
         self.operators.iter().flat_map(|op| op.logs.iter())
     }

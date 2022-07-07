@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 use std::fmt;
 
+#[must_use]
 pub fn entity_escape_char(khar: char) -> String {
     format!("&#x{:X};", khar as u32)
 }

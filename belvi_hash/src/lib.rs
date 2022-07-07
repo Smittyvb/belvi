@@ -2,6 +2,7 @@
 use ring::digest;
 
 /// 128-bit hash for storing in DB
+#[must_use]
 pub fn db(bytes: &[u8]) -> [u8; 16] {
     digest::digest(&digest::SHA256, bytes).as_ref()[0..16]
         .try_into()

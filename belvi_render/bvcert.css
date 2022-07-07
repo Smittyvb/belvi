@@ -33,3 +33,10 @@ body {
 .bvcert-null, .bvcert-empty {
     color: rgb(84, 84, 84);
 }
+
+.bvcert-kv-table td > .bvcert-bytes {
+    line-height: 1;
+    display: block;
+    max-width: 40em;
+    overflow-wrap: anywhere;
+}

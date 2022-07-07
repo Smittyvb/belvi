@@ -15,7 +15,8 @@ impl Render for bytes::Bytes {
     fn render(&self) -> String {
         if self.len() > LEN_LIMIT {
             format!(
-                r#"<code class="bvcert-bytes">{:X}…</code>"#,
+                r#"<code class="bvcert-bytes" data-full="{:X}">{:X}…</code>"#,
+                self,
                 self.slice(0..LEN_LIMIT)
             )
         } else {

@@ -287,7 +287,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
                         include_str!("tmpl/base.css"),
                         include_str!("../../belvi_render/bvcert.css")
                     ),
-                    script = include_str!("tmpl/dates.js")
+                    script = concat!(include_str!("tmpl/dates.js"), include_str!("tmpl/certs.js")),
                 ),
             )
                 .into_response()

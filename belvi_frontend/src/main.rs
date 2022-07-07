@@ -110,6 +110,8 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
         let mut certs_regex_stmt = db
             .prepare_cached(include_str!("recent_certs_regex.sql"))
             .unwrap();
+        // TODO: don't block here, execute SQL on other thread
+        // https://users.rust-lang.org/t/using-sqlite-asynchronously/39658?u=smitop
         let mut certs_rows = if let Some(domain) = &query.domain {
             certs_regex_stmt.query(params![domain]).unwrap()
         } else {

@@ -156,7 +156,6 @@ impl LogList {
     }
 
     /// Returns an iterator of all logs run by all log operators.
-    #[must_use]
     pub fn logs(&self) -> impl Iterator<Item = &Log> {
         self.operators.iter().flat_map(|op| op.logs.iter())
     }

@@ -96,6 +96,7 @@ impl Log {
             self.url, hash, tree_size
         )
     }
+    #[must_use]
     pub fn get_entry_and_proof_url(&self, leaf_index: u32, tree_size: TreeSize) -> String {
         format!(
             "{}ct/v1/get-entry-and-proof?leaf_index={}&tree_size={}",

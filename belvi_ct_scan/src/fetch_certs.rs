@@ -205,7 +205,6 @@ impl<'ctx> FetchState {
                             not_before,
                             not_after,
                         );
-                        // TODO: store cert
                         let leaf_hash_bytes = belvi_hash::db(log_entry.inner_cert());
                         let leaf_hash = leaf_hash_bytes.to_vec();
                         let extra_hash = belvi_hash::db(&entry.extra_data);

@@ -115,6 +115,7 @@ impl Log {
             if matches!(self.state, LogState::Retired { .. }) {
                 false
             } else {
+                // TODO: this is wrong, should be based on expiration date?
                 let end_exclusive =
                     DateTime::parse_from_rfc3339(end_exclusive).expect("invalid log data");
                 let start_inclusive =

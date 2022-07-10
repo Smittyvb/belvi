@@ -265,16 +265,22 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
     match maybe_file {
         Ok(cert) => {
             // first try decoding as precert, then try normal cert
-            let cert = match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
-                x509_certificate::rfc5280::TbsCertificate::take_from(cons)
-            }) {
-                Ok(tbs_cert) => tbs_cert.render(),
-                Err(_) => Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
-                    x509_certificate::rfc5280::Certificate::take_from(cons)
-                })
-                .expect("invalid cert in log")
-                .render(),
-            };
+            let (cert, domains) =
+                match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+                    x509_certificate::rfc5280::TbsCertificate::take_from(cons)
+                }) {
+                    Ok(tbs_cert) => (tbs_cert.render(), belvi_cert::get_cert_domains(&tbs_cert)),
+                    Err(_) => {
+                        let cert = Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+                            x509_certificate::rfc5280::Certificate::take_from(cons)
+                        })
+                        .expect("invalid cert in log");
+                        (
+                            cert.render(),
+                            belvi_cert::get_cert_domains(&cert.tbs_certificate),
+                        )
+                    }
+                };
             (
                 StatusCode::OK,
                 html_headers(),
@@ -282,7 +288,14 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
                     include_str!("tmpl/base.html"),
                     title = format_args!("{} - certificate", PRODUCT_NAME),
                     product_name = PRODUCT_NAME,
-                    content = cert,
+                    content = format_args!(
+                        include_str!("tmpl/cert_info.html"),
+                        domains = domains
+                            .get(0)
+                            .map(|dom| format!("<h2>{}</h2>", String::from_utf8_lossy(dom)))
+                            .unwrap_or_else(String::new),
+                        cert = cert,
+                    ),
                     css = concat!(
                         include_str!("tmpl/base.css"),
                         include_str!("../../belvi_render/bvcert.css")

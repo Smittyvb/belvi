@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 belvi_log_list = { path = "../belvi_log_list" }
 belvi_hash = { path = "../belvi_hash" }
+belvi_cert = { path = "../belvi_cert" }
 
 reqwest = { version = "0.11.9", features = ["brotli", "gzip", "json"] }
 tokio = { version = "1.16.1", features = ["full"] }

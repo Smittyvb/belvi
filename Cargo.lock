@@ -160,11 +160,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "belvi_cert"
+version = "0.1.0"
+dependencies = [
+ "bcder",
+ "bytes",
+ "log",
+ "x509-certificate",
+]
+
+[[package]]
 name = "belvi_ct_scan"
 version = "0.1.0"
 dependencies = [
  "base64",
  "bcder",
+ "belvi_cert",
  "belvi_hash",
  "belvi_log_list",
  "bytes",

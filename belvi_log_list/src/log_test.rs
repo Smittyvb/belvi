@@ -2,11 +2,25 @@
 use super::*;
 use chrono::TimeZone;
 
-fn jan_1_2022() -> DateTime<Utc> {
-    chrono::Utc.ymd(2022, 01, 01).and_hms(00, 00, 00)
-}
-fn jan_1_2023() -> DateTime<Utc> {
-    chrono::Utc.ymd(2023, 01, 01).and_hms(00, 00, 00)
+fn validities(log: &Log) -> [bool; 13] {
+    fn jan1(year: i32) -> DateTime<Utc> {
+        chrono::Utc.ymd(year, 01, 01).and_hms(00, 00, 00)
+    }
+    [
+        log.has_active_certs(jan1(2015)),
+        log.has_active_certs(jan1(2016)),
+        log.has_active_certs(jan1(2017)),
+        log.has_active_certs(jan1(2018)),
+        log.has_active_certs(jan1(2019)),
+        log.has_active_certs(jan1(2020)),
+        log.has_active_certs(jan1(2021)),
+        log.has_active_certs(jan1(2022)),
+        log.has_active_certs(jan1(2023)),
+        log.has_active_certs(jan1(2024)),
+        log.has_active_certs(jan1(2025)),
+        log.has_active_certs(jan1(2026)),
+        log.has_active_certs(jan1(2027)),
+    ]
 }
 
 #[test]
@@ -53,7 +67,10 @@ fn argon2021() {
         "https://ct.googleapis.com/logs/argon2021/ct/v1/get-entries?start=1337&end=31337"
             .to_string()
     );
-    assert!(!log.has_active_certs(jan_1_2022()));
+    assert_eq!(
+        validities(&log),
+        [true, true, true, true, true, true, true, true, true, false, false, false, false],
+    );
 }
 
 #[test]
@@ -92,7 +109,10 @@ fn aviator() {
         },
         temporal_interval: None,
     });
-    assert!(!log.has_active_certs(jan_1_2022()));
+    assert_eq!(
+        validities(&log),
+        [true, true, true, true, true, false, false, false, false, false, false, false, false],
+    );
 }
 
 #[test]
@@ -116,6 +136,8 @@ fn nimbus2022() {
         }
     "#;
     let log = serde_json::from_str::<Log>(data).unwrap();
-    assert!(log.has_active_certs(jan_1_2022()));
-    assert!(!log.has_active_certs(jan_1_2023()));
+    assert_eq!(
+        validities(&log),
+        [true, true, true, true, true, true, true, true, true, true, false, false, false]
+    );
 }

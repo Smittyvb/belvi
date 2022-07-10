@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, FixedOffset, Utc};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -107,20 +107,33 @@ impl Log {
     /// Is it possible that this log has unexpired certs that can be fetched?
     #[must_use]
     pub fn has_active_certs(&self, now: DateTime<Utc>) -> bool {
+        fn no_new_valid(timestamp: DateTime<FixedOffset>, now: DateTime<Utc>) -> bool {
+            const OLD_MAX_CERT_DURATION: i64 = 825;
+            const NEW_MAX_CERT_DURATION: i64 = 398;
+            // 825 days after Sept. 1, 2020 (when duration was shortened)
+            // = Dec. 6, 2022
+            const CERT_DURATION_SWITCH: i64 = 1670302800;
+            let now = now.timestamp();
+            let extra_days = if now > CERT_DURATION_SWITCH {
+                NEW_MAX_CERT_DURATION
+            } else {
+                OLD_MAX_CERT_DURATION
+            };
+            let oldest_certs_expiration = timestamp + Duration::days(extra_days);
+            oldest_certs_expiration.timestamp() > now
+        }
+
         if let Some(TemporalInterval {
-            start_inclusive,
+            start_inclusive: _,
             end_exclusive,
         }) = &self.temporal_interval
         {
             if matches!(self.state, LogState::Retired { .. }) {
                 false
             } else {
-                // TODO: this is wrong, should be based on expiration date?
                 let end_exclusive =
                     DateTime::parse_from_rfc3339(end_exclusive).expect("invalid log data");
-                let start_inclusive =
-                    DateTime::parse_from_rfc3339(start_inclusive).expect("invalid log data");
-                now >= start_inclusive && now < end_exclusive
+                now < end_exclusive || no_new_valid(end_exclusive, now)
             }
         } else {
             match self.state {
@@ -130,21 +143,9 @@ impl Log {
                 LogState::Usable { .. } => true,
                 // timestamp is point when certs stop being accepted
                 LogState::ReadOnly { ref timestamp, .. } => {
-                    const OLD_MAX_CERT_DURATION: i64 = 825;
-                    const NEW_MAX_CERT_DURATION: i64 = 398;
-                    // 825 days after Sept. 1, 2020 (when duration was shortened)
-                    // = Dec. 6, 2022
-                    const CERT_DURATION_SWITCH: i64 = 1670302800;
                     let timestamp =
                         DateTime::parse_from_rfc3339(timestamp).expect("invalid log data");
-                    let now = now.timestamp();
-                    let extra_days = if now > CERT_DURATION_SWITCH {
-                        NEW_MAX_CERT_DURATION
-                    } else {
-                        OLD_MAX_CERT_DURATION
-                    };
-                    let oldest_certs_expiration = timestamp + Duration::days(extra_days);
-                    oldest_certs_expiration.timestamp() > now
+                    no_new_valid(timestamp, now)
                 }
             }
         }

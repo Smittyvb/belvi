@@ -29,7 +29,11 @@ pub fn get_cert_domains(cert: &TbsCertificate) -> Vec<Vec<u8>> {
                         let mut doms = Vec::new();
                         loop {
                             match take_tagged_ber(subcons) {
-                                Ok(dom) => doms.push(dom),
+                                Ok(dom) => {
+                                    if !domains.contains(&dom) && !doms.contains(&dom) {
+                                        doms.push(dom)
+                                    }
+                                }
                                 Err(decode::Error::Malformed) => break,
                                 Err(decode::Error::Unimplemented) => {}
                             }

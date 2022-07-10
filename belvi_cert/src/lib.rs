@@ -4,11 +4,10 @@ use bcder::{
     Tag,
 };
 use log::warn;
-use std::collections::BTreeSet;
 use x509_certificate::rfc5280::TbsCertificate;
 
-pub fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
-    let mut domains = BTreeSet::new();
+pub fn get_cert_domains(cert: &TbsCertificate) -> Vec<Vec<u8>> {
+    let mut domains = Vec::new();
     for subject in &**cert.subject {
         for attr in &**subject {
             // 2.5.4.3 is OID for commonName
@@ -16,7 +15,7 @@ pub fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
                 let next_dom =
                     Constructed::decode((**attr.value).clone(), bcder::Mode::Ber, take_tagged_ber);
                 if let Ok(dom) = next_dom {
-                    domains.insert(dom);
+                    domains.push(dom);
                 }
             }
         }
@@ -40,7 +39,7 @@ pub fn get_cert_domains(cert: &TbsCertificate) -> BTreeSet<Vec<u8>> {
                 });
                 if let Ok(doms) = doms {
                     for dom in doms {
-                        domains.insert(dom);
+                        domains.push(dom);
                     }
                 } else {
                     warn!("Cert has invalid subjectAltNames extension");
@@ -108,10 +107,10 @@ mod test {
             .as_ref()
             .tbs_certificate,
         );
-        let mut expected = BTreeSet::new();
-        expected.insert(b"*.smitop.com".to_vec());
-        expected.insert(b"smitop.com".to_vec());
-        expected.insert(b"sni.cloudflaressl.com".to_vec());
+        let mut expected = Vec::new();
+        expected.push(b"*.smitop.com".to_vec());
+        expected.push(b"sni.cloudflaressl.com".to_vec());
+        expected.push(b"smitop.com".to_vec());
         assert_eq!(domains, expected);
     }
 
@@ -125,9 +124,9 @@ mod test {
             .as_ref()
             .tbs_certificate,
         );
-        let mut expected = BTreeSet::new();
-        expected.insert(b"*.gecko.me".to_vec());
-        expected.insert(b"gecko.me".to_vec());
+        let mut expected = Vec::new();
+        expected.push(b"*.gecko.me".to_vec());
+        expected.push(b"gecko.me".to_vec());
         assert_eq!(domains, expected);
     }
 
@@ -142,10 +141,10 @@ mod test {
             .as_ref()
             .tbs_certificate,
         );
-        let mut expected = BTreeSet::new();
-        expected.insert(b"test1.http-01.production.haplorrhini.com".to_vec());
-        expected.insert(b"test2.http-01.production.haplorrhini.com".to_vec());
-        expected.insert(b"test3.http-01.production.haplorrhini.com".to_vec());
+        let mut expected = Vec::new();
+        expected.push(b"test1.http-01.production.haplorrhini.com".to_vec());
+        expected.push(b"test2.http-01.production.haplorrhini.com".to_vec());
+        expected.push(b"test3.http-01.production.haplorrhini.com".to_vec());
         // TODO: ip address
         assert_eq!(domains, expected);
     }

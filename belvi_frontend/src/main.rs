@@ -11,7 +11,7 @@ use axum::{
 use bcder::decode::Constructed;
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, env, path::PathBuf, time::Instant};
 use tokio::task;
@@ -114,10 +114,18 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             let mut certs_regex_stmt = db
                 .prepare_cached(include_str!("queries/recent_certs_regex.sql"))
                 .unwrap();
-            let mut certs_rows = if let Some(domain) = &query.domain {
-                certs_regex_stmt.query(params![domain]).unwrap()
+            let mut certs_count_stmt = db.prepare_cached("SELECT COUNT(*) FROM certs").unwrap();
+            let (mut certs_rows, count) = if let Some(domain) = &query.domain {
+                (certs_regex_stmt.query([domain]).unwrap(), None)
             } else {
-                certs_stmt.query([]).unwrap()
+                (
+                    certs_stmt.query([]).unwrap(),
+                    Some(
+                        certs_count_stmt
+                            .query_row([], |row| Ok(row.get::<_, usize>(0)?))
+                            .unwrap(),
+                    ),
+                )
             };
 
             // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
@@ -225,6 +233,16 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                         format!(
                             include_str!("tmpl/certs_list.html"),
                             count = certs.len(),
+                            total = if certs.len() < (limit as usize) {
+                                if let Some(val) = count {
+                                    assert_eq!(val, certs.len());
+                                }
+                                format!(" ({} total)", certs.len())
+                            } else if let Some(val) = count {
+                                format!(" ({} total)", val)
+                            } else {
+                                String::new()
+                            },
                             domain = domain,
                             certs = certs
                                 .iter()

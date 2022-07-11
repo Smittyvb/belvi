@@ -327,17 +327,14 @@ fn cert_response(cert: &Vec<u8>) -> Response {
         .into_response()
 }
 
-async fn get_cert(
-    Path(leaf_hash): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
-) -> impl IntoResponse {
+async fn find_cert(state: Arc<Mutex<State>>, leaf_hash: &str) -> Result<Vec<u8>, Response> {
     let leaf_hash = match hex::decode(leaf_hash) {
         Ok(val) => val,
-        Err(_) => return error(Some("Cert ID must be hex".to_string())),
+        Err(_) => return Err(error(Some("Cert ID must be hex".to_string()))),
     };
     let maybe_cert = { state.lock().await.cache_conn.get_cert(&leaf_hash).await };
     match maybe_cert {
-        Some(cert) => cert_response(&cert),
+        Some(cert) => Ok(cert),
         None => {
             let wanted_logs = DB_CONN.with(|db| {
                 let mut query = db
@@ -356,7 +353,7 @@ async fn get_cert(
                 logs
             });
             if wanted_logs.is_empty() {
-                not_found("Certificate")
+                Err(not_found("Certificate"))
             } else {
                 let mut state = state.lock().await;
                 let mut matching_logs = state
@@ -372,7 +369,7 @@ async fn get_cert(
                     });
                 let (log, idx) = match matching_logs.next() {
                     Some(val) => val,
-                    None => return error(Some("Found no current logs with cert".to_string())),
+                    None => return Err(error(Some("Found no current logs with cert".to_string()))),
                 };
                 let entries = state
                     .fetcher
@@ -381,16 +378,19 @@ async fn get_cert(
                 let entries = match entries {
                     Ok(val) => val,
                     Err(err) => {
-                        return error(Some(format!("Error fetching cert from log: {:#?}", err)))
+                        return Err(error(Some(format!(
+                            "Error fetching cert from log: {:#?}",
+                            err
+                        ))))
                     }
                 };
                 match entries.len() {
                     1 => (),
-                    0 => return error(Some("Log found no cert at index".to_string())),
+                    0 => return Err(error(Some("Log found no cert at index".to_string()))),
                     _ => {
-                        return error(Some(
+                        return Err(error(Some(
                             "Log responded with more certs than requested".to_string(),
-                        ))
+                        )))
                     }
                 };
                 let cert = entries[0]
@@ -400,9 +400,53 @@ async fn get_cert(
                     .inner_cert();
                 drop(matching_logs);
                 state.cache_conn.new_cert(&belvi_hash::db(cert), cert);
-                cert_response(cert)
+                Ok(cert.clone())
             }
         }
+    }
+}
+
+async fn get_cert(
+    Path(leaf_hash): Path<String>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
+) -> impl IntoResponse {
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    enum OutputMode {
+        Der,
+        Html,
+        // TODO: pem
+    }
+
+    let mut parts = leaf_hash.split('.');
+    let leaf_hash = match parts.next() {
+        Some(val) => val,
+        None => return error(Some("No leaf hash".to_string())),
+    };
+    let ext = match parts.next() {
+        None => OutputMode::Html,
+        Some("ber" | "cer" | "der") => OutputMode::Der,
+        _ => return error(Some("Unknown extension".to_string())),
+    };
+
+    match find_cert(state, leaf_hash).await {
+        Ok(cert) => match ext {
+            OutputMode::Html => cert_response(&cert),
+            OutputMode::Der => (
+                StatusCode::OK,
+                {
+                    let mut headers = base_headers();
+                    // according to https://pki-tutorial.readthedocs.io/en/latest/mime.html
+                    headers.insert(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/x-x509-ca-cert"),
+                    );
+                    headers
+                },
+                cert,
+            )
+                .into_response(),
+        },
+        Err(res) => res,
     }
 }
 

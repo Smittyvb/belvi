@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // decodes arbitrary BER
 use bcder::{decode::Constructed, decode::Content, Mode};
+use log::trace;
 
 use super::{html_escape::HtmlEscapable, render_array, Render};
 
@@ -78,6 +79,7 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
 
 pub fn render_ber(bytes: bytes::Bytes) -> String {
     let orig_bytes = bytes.clone();
+    trace!("rendering ber {:x}", bytes);
     if let Ok(text) = Constructed::decode(bytes, Mode::Ber, take_cons) {
         text
     } else {

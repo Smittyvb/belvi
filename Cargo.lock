@@ -244,7 +244,9 @@ dependencies = [
  "bcder",
  "bytes",
  "chrono",
+ "env_logger",
  "lazy_static",
+ "log",
  "x509-certificate",
 ]
 

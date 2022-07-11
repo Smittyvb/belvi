@@ -4,6 +4,8 @@ use std::{env, fs};
 use belvi_render::Render;
 
 fn main() {
+    env_logger::init();
+
     let mut args = env::args_os();
     let path_str = args.nth(1).unwrap();
     let cert_bytes = fs::read(path_str).unwrap();

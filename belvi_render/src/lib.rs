@@ -70,10 +70,7 @@ impl Render for Certificate {
                     "Signature algorithm".to_string(),
                     self.signature_algorithm.render(),
                 ),
-                (
-                    "Signature".to_string(),
-                    ber::render_ber(self.signature.octet_bytes()),
-                ),
+                ("Signature".to_string(), self.signature.render()),
             ]
             .into_iter(),
         )

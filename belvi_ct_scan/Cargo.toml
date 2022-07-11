@@ -10,7 +10,6 @@ belvi_hash = { path = "../belvi_hash" }
 belvi_cache = { path = "../belvi_cache" }
 belvi_cert = { path = "../belvi_cert" }
 
-reqwest = { version = "0.11.9", features = ["brotli", "gzip", "json"] }
 tokio = { version = "1.16.1", features = ["full"] }
 serde_json = "1.0.78"
 serde = { version = "1.0.136", features = ["derive"]}
@@ -21,7 +20,6 @@ log = "0.4.14"
 env_logger = "0.9.0"
 rusqlite = "0.27.0"
 bcder = "0.6.1"
-bytes = "1.1.0"
 fastrand = "1.7.0"
 hex = "0.4.3"
 futures = { version = "0.3.21", default-features = false, features = ["std"] }

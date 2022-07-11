@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use chrono::{DateTime, Utc};
 use log::{debug, info, warn};
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -11,102 +10,10 @@ use std::{
 };
 
 mod fetch_certs;
-pub mod log_data;
 mod update_sths;
 
-use belvi_log_list::{Log, LogList};
-use log_data::{GetEntriesItem, LogSth};
-
-#[derive(Debug, Clone)]
-struct Fetcher {
-    client: reqwest::Client,
-}
-
-#[derive(Debug)]
-#[allow(dead_code)] // Debug trait is ignored for dead code analysis, but some fields are only here for better messages
-enum FetchError {
-    Reqwest(reqwest::Error),
-    BadStatus,
-    DeserializeError {
-        serde_error: serde_json::Error,
-        input: bytes::Bytes,
-    },
-}
-
-impl Fetcher {
-    fn new() -> Self {
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert(
-            "From",
-            reqwest::header::HeaderValue::from_static("belvi@smitop.com"),
-        );
-        Self {
-            client: reqwest::Client::builder()
-                .user_agent("belvi/0.1 (belvi@smitop.com)")
-                .default_headers(headers)
-                .brotli(true)
-                .gzip(true)
-                .https_only(true)
-                .build()
-                .unwrap(),
-        }
-    }
-    async fn fetch_sth(&self, log: &Log) -> Result<LogSth, FetchError> {
-        let res = self
-            .client
-            .get(log.get_sth_url())
-            .send()
-            .await
-            .map_err(FetchError::Reqwest)?;
-        let bytes = res.bytes().await.map_err(FetchError::Reqwest)?;
-        match serde_json::from_slice(&bytes) {
-            Ok(v) => Ok(v),
-            Err(serde_error) => Err(FetchError::DeserializeError {
-                serde_error,
-                input: bytes,
-            }),
-        }
-    }
-    async fn fetch_entries(
-        &self,
-        log: &Log,
-        start: u64,
-        end: u64,
-    ) -> Result<Vec<GetEntriesItem>, FetchError> {
-        let resp = self
-            .client
-            .get(log.get_entries_url(start, end))
-            .send()
-            .await
-            .map_err(FetchError::Reqwest)?;
-        if resp.status() != StatusCode::OK {
-            // TODO: proper backoff after 429
-            warn!(
-                "bad resp status {} while fetching {}-{} from \"{}\": {}",
-                resp.status().as_str(),
-                start,
-                end,
-                log.description,
-                resp.text().await.map_err(FetchError::Reqwest)?
-            );
-            Err(FetchError::BadStatus)
-        } else {
-            Ok(GetEntriesItem::parse(&resp.text().await.map_err(FetchError::Reqwest)?).unwrap())
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
-struct LogId(String);
-
-impl LogId {
-    pub fn num(&self) -> u32 {
-        let bytes: [u8; 4] = base64::decode(&self.0).expect("log ID not base64")[0..4]
-            .try_into()
-            .unwrap();
-        u32::from_le_bytes(bytes)
-    }
-}
+use belvi_log_list::{fetcher::Fetcher, log_data::LogSth};
+use belvi_log_list::{Log, LogId, LogList};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct FetchState {

@@ -9,6 +9,7 @@ use axum::{
     Extension, Router,
 };
 use bcder::decode::Constructed;
+use belvi_log_list::{fetcher::Fetcher, LogId, LogList};
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::Connection;
@@ -25,7 +26,13 @@ fn get_data_path() -> PathBuf {
     args.nth(1).unwrap().into()
 }
 
-// TODO: use tokio::task_local instead?
+struct State {
+    cache_conn: belvi_cache::Connection,
+    log_list: LogList,
+    fetcher: Fetcher,
+}
+
+// TODO: use put in global state
 thread_local! {
     static DB_CONN: Connection = {
         let db_path = get_data_path().join("data.db");
@@ -278,59 +285,124 @@ fn not_found(thing: &'static str) -> Response {
         .into_response()
 }
 
+fn cert_response(cert: &Vec<u8>) -> Response {
+    // first try decoding as precert, then try normal cert
+    let (cert, domains) = match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+        x509_certificate::rfc5280::TbsCertificate::take_from(cons)
+    }) {
+        Ok(tbs_cert) => (tbs_cert.render(), belvi_cert::get_cert_domains(&tbs_cert)),
+        Err(_) => {
+            let cert = Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+                x509_certificate::rfc5280::Certificate::take_from(cons)
+            })
+            .expect("invalid cert in log");
+            (
+                cert.render(),
+                belvi_cert::get_cert_domains(&cert.tbs_certificate),
+            )
+        }
+    };
+    (
+        StatusCode::OK,
+        html_headers(),
+        format!(
+            include_str!("tmpl/base.html"),
+            title = format_args!("{} - certificate", PRODUCT_NAME),
+            product_name = PRODUCT_NAME,
+            content = format_args!(
+                include_str!("tmpl/cert_info.html"),
+                domains = domains
+                    .get(0)
+                    .map(|dom| format!("<h2>{}</h2>", String::from_utf8_lossy(dom)))
+                    .unwrap_or_else(String::new),
+                cert = cert,
+            ),
+            css = concat!(
+                include_str!("tmpl/base.css"),
+                include_str!("../../belvi_render/bvcert.css")
+            ),
+            script = concat!(include_str!("tmpl/dates.js"), include_str!("tmpl/certs.js")),
+        ),
+    )
+        .into_response()
+}
+
 async fn get_cert(
     Path(leaf_hash): Path<String>,
-    Extension(cache_conn): Extension<Arc<Mutex<belvi_cache::Connection>>>,
+    Extension(state): Extension<Arc<Mutex<State>>>,
 ) -> impl IntoResponse {
     let leaf_hash = match hex::decode(leaf_hash) {
         Ok(val) => val,
         Err(_) => return error(Some("Cert ID must be hex".to_string())),
     };
-    let maybe_cert = { cache_conn.lock().await.get_cert(&leaf_hash).await };
+    let maybe_cert = { state.lock().await.cache_conn.get_cert(&leaf_hash).await };
     match maybe_cert {
-        Some(cert) => {
-            // first try decoding as precert, then try normal cert
-            let (cert, domains) =
-                match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
-                    x509_certificate::rfc5280::TbsCertificate::take_from(cons)
-                }) {
-                    Ok(tbs_cert) => (tbs_cert.render(), belvi_cert::get_cert_domains(&tbs_cert)),
-                    Err(_) => {
-                        let cert = Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
-                            x509_certificate::rfc5280::Certificate::take_from(cons)
-                        })
-                        .expect("invalid cert in log");
-                        (
-                            cert.render(),
-                            belvi_cert::get_cert_domains(&cert.tbs_certificate),
-                        )
+        Some(cert) => cert_response(&cert),
+        None => {
+            let wanted_logs = DB_CONN.with(|db| {
+                let mut query = db
+                    .prepare_cached("SELECT log_id, idx FROM log_entries WHERE leaf_hash = ?")
+                    .unwrap();
+                let mut rows = query.query([leaf_hash]).unwrap();
+                let mut logs: Vec<(u32, usize)> = Vec::new();
+                loop {
+                    let val = match rows.next() {
+                        Ok(Some(val)) => val,
+                        Ok(None) => break,
+                        Err(e) => panic!("unexpected error fetching certs {:#?}", e),
+                    };
+                    logs.push((val.get(0).unwrap(), val.get(1).unwrap()));
+                }
+                logs
+            });
+            if wanted_logs.is_empty() {
+                not_found("Certificate")
+            } else {
+                let mut state = state.lock().await;
+                let mut matching_logs = state
+                    .log_list
+                    .logs()
+                    .filter(|list_log| list_log.readable())
+                    .filter_map(|list_log| {
+                        let wanted_id = LogId(list_log.log_id.clone()).num();
+                        wanted_logs
+                            .iter()
+                            .find(|wanted_log| wanted_id == wanted_log.0)
+                            .map(|v| (list_log, v.1))
+                    });
+                let (log, idx) = match matching_logs.next() {
+                    Some(val) => val,
+                    None => return error(Some("Found no current logs with cert".to_string())),
+                };
+                let entries = state
+                    .fetcher
+                    .fetch_entries(log, idx as u64, idx as u64)
+                    .await;
+                let entries = match entries {
+                    Ok(val) => val,
+                    Err(err) => {
+                        return error(Some(format!("Error fetching cert from log: {:#?}", err)))
                     }
                 };
-            (
-                StatusCode::OK,
-                html_headers(),
-                format!(
-                    include_str!("tmpl/base.html"),
-                    title = format_args!("{} - certificate", PRODUCT_NAME),
-                    product_name = PRODUCT_NAME,
-                    content = format_args!(
-                        include_str!("tmpl/cert_info.html"),
-                        domains = domains
-                            .get(0)
-                            .map(|dom| format!("<h2>{}</h2>", String::from_utf8_lossy(dom)))
-                            .unwrap_or_else(String::new),
-                        cert = cert,
-                    ),
-                    css = concat!(
-                        include_str!("tmpl/base.css"),
-                        include_str!("../../belvi_render/bvcert.css")
-                    ),
-                    script = concat!(include_str!("tmpl/dates.js"), include_str!("tmpl/certs.js")),
-                ),
-            )
-                .into_response()
+                match entries.len() {
+                    1 => (),
+                    0 => return error(Some("Log found no cert at index".to_string())),
+                    _ => {
+                        return error(Some(
+                            "Log responded with more certs than requested".to_string(),
+                        ))
+                    }
+                };
+                let cert = entries[0]
+                    .leaf_input
+                    .timestamped_entry
+                    .log_entry
+                    .inner_cert();
+                drop(matching_logs);
+                state.cache_conn.new_cert(&belvi_hash::db(cert), cert);
+                cert_response(cert)
+            }
         }
-        None => not_found("Certificate"),
     }
 }
 
@@ -342,7 +414,11 @@ async fn global_404() -> impl IntoResponse {
 async fn main() {
     env_logger::init();
 
-    let cache_conn = Arc::new(Mutex::new(belvi_cache::Connection::new().await));
+    let cache_conn = Arc::new(Mutex::new(State {
+        cache_conn: belvi_cache::Connection::new().await,
+        log_list: LogList::google(),
+        fetcher: Fetcher::new(),
+    }));
 
     let app = Router::new()
         .route("/", get(get_root))

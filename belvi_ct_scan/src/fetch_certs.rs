@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-use crate::{log_data::LogEntry, Ctx, FetchState, LogId};
+use crate::{Ctx, FetchState, LogId};
 use bcder::decode::Constructed;
-use belvi_log_list::Log;
+use belvi_log_list::{log_data::LogEntry, Log};
 use log::{debug, info, trace, warn};
 use std::sync::Mutex;
 use x509_certificate::asn1time::Time;

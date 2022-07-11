@@ -8,6 +8,8 @@ edition = "2021"
 belvi_render = { path = "../belvi_render" }
 belvi_cert = { path = "../belvi_cert" }
 belvi_cache = { path = "../belvi_cache" }
+belvi_log_list = { path = "../belvi_log_list" }
+belvi_hash = { path = "../belvi_hash" }
 
 tokio = { version = "1.16.1", features = ["full"] }
 axum = "0.5.3"
@@ -21,3 +23,4 @@ x509-certificate = "0.13.0"
 bcder = "0.6.1"
 hex = "0.4.3"
 regex = "1.5.5"
+reqwest = "0.11.11"

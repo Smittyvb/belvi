@@ -414,7 +414,7 @@ async fn get_cert(
     enum OutputMode {
         Der,
         Html,
-        // TODO: pem
+        Pem,
     }
 
     let mut parts = leaf_hash.split('.');
@@ -425,6 +425,7 @@ async fn get_cert(
     let ext = match parts.next() {
         None => OutputMode::Html,
         Some("ber" | "cer" | "der") => OutputMode::Der,
+        Some("pem") => OutputMode::Pem,
         _ => return error(Some("Unknown extension".to_string())),
     };
 
@@ -443,6 +444,24 @@ async fn get_cert(
                     headers
                 },
                 cert,
+            )
+                .into_response(),
+            OutputMode::Pem => (
+                StatusCode::OK,
+                {
+                    let mut headers = base_headers();
+                    // according to https://pki-tutorial.readthedocs.io/en/latest/mime.html
+                    headers.insert(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/x-pem-file"),
+                    );
+                    headers
+                },
+                // TODO: CERTIFICATE should be different for precerts?
+                format!(
+                    "-----BEGIN CERTIFICATE-----\r\n{}\r\n-----END CERTIFICATE-----\r\n",
+                    base64::encode(cert)
+                ),
             )
                 .into_response(),
         },

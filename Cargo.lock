@@ -198,6 +198,7 @@ name = "belvi_frontend"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64",
  "bcder",
  "belvi_cache",
  "belvi_cert",

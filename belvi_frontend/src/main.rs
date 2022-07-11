@@ -6,15 +6,15 @@ use axum::{
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Extension, Router,
 };
 use bcder::decode::Constructed;
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, env, path::PathBuf, time::Instant};
-use tokio::task;
+use std::{cmp::Ordering, env, path::PathBuf, sync::Arc, time::Instant};
+use tokio::{sync::Mutex, task};
 
 mod exts;
 
@@ -278,10 +278,17 @@ fn not_found(thing: &'static str) -> Response {
         .into_response()
 }
 
-async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
-    let maybe_file = tokio::fs::read(get_data_path().join("certs").join(leaf_hash)).await;
-    match maybe_file {
-        Ok(cert) => {
+async fn get_cert(
+    Path(leaf_hash): Path<String>,
+    Extension(cache_conn): Extension<Arc<Mutex<belvi_cache::Connection>>>,
+) -> impl IntoResponse {
+    let leaf_hash = match hex::decode(leaf_hash) {
+        Ok(val) => val,
+        Err(_) => return error(Some("Cert ID must be hex".to_string())),
+    };
+    let maybe_cert = { cache_conn.lock().await.get_cert(&leaf_hash).await };
+    match maybe_cert {
+        Some(cert) => {
             // first try decoding as precert, then try normal cert
             let (cert, domains) =
                 match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
@@ -323,7 +330,7 @@ async fn get_cert(Path(leaf_hash): Path<String>) -> impl IntoResponse {
             )
                 .into_response()
         }
-        Err(_) => not_found("Certificate"),
+        None => not_found("Certificate"),
     }
 }
 
@@ -335,10 +342,13 @@ async fn global_404() -> impl IntoResponse {
 async fn main() {
     env_logger::init();
 
+    let cache_conn = Arc::new(Mutex::new(belvi_cache::Connection::new().await));
+
     let app = Router::new()
         .route("/", get(get_root))
         .route("/cert/:leaf_hash", get(get_cert))
-        .fallback(global_404.into_service());
+        .fallback(global_404.into_service())
+        .layer(Extension(cache_conn));
 
     axum::Server::bind(&"0.0.0.0:47371".parse().unwrap())
         .serve(app.into_make_service())

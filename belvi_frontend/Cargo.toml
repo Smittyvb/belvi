@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 belvi_render = { path = "../belvi_render" }
 belvi_cert = { path = "../belvi_cert" }
+belvi_cache = { path = "../belvi_cache" }
 
 tokio = { version = "1.16.1", features = ["full"] }
 axum = "0.5.3"

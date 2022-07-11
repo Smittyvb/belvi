@@ -147,7 +147,7 @@ impl Log {
             } else {
                 let end_exclusive =
                     DateTime::parse_from_rfc3339(end_exclusive).expect("invalid log data");
-                now < end_exclusive || no_new_valid(end_exclusive, now)
+                now < end_exclusive
             }
         } else {
             match self.state {

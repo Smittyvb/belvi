@@ -69,7 +69,7 @@ fn argon2021() {
     );
     assert_eq!(
         validities(&log),
-        [true, true, true, true, true, true, true, true, true, false, false, false, false],
+        [true, true, true, true, true, true, true, false, false, false, false, false, false],
     );
 }
 
@@ -138,6 +138,6 @@ fn nimbus2022() {
     let log = serde_json::from_str::<Log>(data).unwrap();
     assert_eq!(
         validities(&log),
-        [true, true, true, true, true, true, true, true, true, true, false, false, false]
+        [true, true, true, true, true, true, true, true, false, false, false, false, false],
     );
 }

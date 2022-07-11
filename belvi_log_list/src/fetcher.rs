@@ -3,7 +3,7 @@ use super::{
     log_data::{GetEntriesItem, LogSth},
     Log,
 };
-use log::warn;
+use log::{trace, warn};
 use reqwest::StatusCode;
 
 #[derive(Debug, Clone)]
@@ -62,6 +62,7 @@ impl Fetcher {
         start: u64,
         end: u64,
     ) -> Result<Vec<GetEntriesItem>, FetchError> {
+        trace!("fetching {}-{} from \"{}\"", start, end, log.description);
         let resp = self
             .client
             .get(log.get_entries_url(start, end))

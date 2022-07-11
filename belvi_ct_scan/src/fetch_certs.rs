@@ -31,7 +31,6 @@ impl<'ctx> FetchState {
                 .unwrap()
                 .next_batch(&*inner_ctx, id.clone())
         };
-        let certs_path = inner_ctx.certs_path.clone();
         trace!("Desired range is {:?}", next_batch);
         if let Some((start, end)) = next_batch {
             assert!(start <= end);
@@ -138,20 +137,17 @@ impl<'ctx> FetchState {
                                 .expect("failed to insert domain");
                         }
                         // wrap in spawn to make it parallel instead of just concurrent
-                        let file_path = certs_path.join(hex::encode(leaf_hash_bytes));
                         let file_contents = log_entry.inner_cert().clone();
-                        files_to_write.push((file_path, file_contents));
+                        files_to_write.push((leaf_hash_bytes, file_contents));
                     }
                     drop(cert_insert);
                     drop(entry_insert);
                     drop(domain_insert);
-                    drop(inner_ctx);
                     // TODO: parallelize
-                    for (file_path, file_contents) in files_to_write {
-                        tokio::fs::write(file_path, file_contents)
-                            .await
-                            .expect("failed to save cert");
+                    for (id, content) in files_to_write {
+                        inner_ctx.redis_conn.new_cert(&id, &content);
                     }
+                    drop(inner_ctx);
                     debug!("Fetched {}-{} from \"{}\"", start, end, log.description);
                     // adjust log_states
                     {

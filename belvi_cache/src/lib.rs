@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
-use redis::{aio::AsyncStream, Cmd};
-use std::{fmt, pin::Pin};
+use log::trace;
+use redis_async::{client::paired, resp_array};
+use std::fmt;
 
 pub struct Connection {
-    inner: redis::aio::Connection<Pin<Box<dyn AsyncStream + Send + Sync>>>,
+    inner: paired::PairedConnection,
 }
 
 impl fmt::Debug for Connection {
@@ -14,17 +15,25 @@ impl fmt::Debug for Connection {
     }
 }
 
+const OBJECT_PREFIX: &[u8] = b"o:";
+
 impl Connection {
     pub async fn new() -> Self {
-        let client = redis::Client::open("redis://127.0.0.1/").unwrap();
-        let con = client.get_tokio_connection().await.unwrap();
-        Self { inner: con }
+        let client = paired::paired_connect("127.0.0.1:6379").await.unwrap();
+        Self { inner: client }
     }
 
     pub async fn get_cert(&mut self, id: &[u8]) -> Option<Vec<u8>> {
-        match Cmd::get(id).query_async(&mut self.inner).await {
-            Ok(v) => v,
-            Err(e) => panic!("TODO: handle cache miss: {:#?}", e),
-        }
+        self.inner
+            .send(resp_array!["GET", [OBJECT_PREFIX, id].concat()])
+            .await
+            .unwrap()
+    }
+
+    pub fn new_cert(&mut self, id: &[u8], content: &[u8]) {
+        trace!("adding cert to Redis: {:?}, {} bytes", id, content.len());
+        self.inner
+            .send_and_forget(resp_array!["SET", [OBJECT_PREFIX, id].concat(), content]);
+        trace!("added cert to Redis: {:?}, {} bytes", id, content.len());
     }
 }

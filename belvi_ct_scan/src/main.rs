@@ -148,12 +148,14 @@ struct LogFetchState {
 struct Ctx {
     data_path: PathBuf,
     fetch_state_path: PathBuf,
+    #[allow(dead_code)]
     certs_path: PathBuf,
     log_list: LogList,
     fetcher: Fetcher,
     start_time: DateTime<Utc>,
     log_transient: HashMap<LogId, LogTransient>,
     sqlite_conn: rusqlite::Connection,
+    redis_conn: belvi_cache::Connection,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -172,7 +174,8 @@ impl Default for LogTransient {
 }
 
 impl Ctx {
-    fn from_env_sync() -> Self {
+    // redis_conn is an argument since it can only be created in an async fn
+    fn from_env_sync(redis_conn: belvi_cache::Connection) -> Self {
         let mut args = env::args_os();
         let data_path: PathBuf = args.nth(1).unwrap().into();
         let fetch_state_path = data_path.join("state.json");
@@ -198,6 +201,7 @@ impl Ctx {
             log_transient: HashMap::new(),
             log_list: LogList::google(),
             fetcher: Fetcher::new(),
+            redis_conn,
         }
     }
     fn active_logs(&self) -> impl Iterator<Item = &Log> {
@@ -212,7 +216,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     info!("Starting Belvi fetcher");
 
-    let ctx = Ctx::from_env_sync();
+    let ctx = Ctx::from_env_sync(belvi_cache::Connection::new().await);
     let mut fetch_state = FetchState::new_sync(&ctx);
 
     fetch_state.update_sths(&ctx).await;

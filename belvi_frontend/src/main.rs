@@ -85,6 +85,7 @@ fn error(e: Option<String>) -> Response {
             include_str!("tmpl/base.html"),
             title = format_args!("{} - error", PRODUCT_NAME),
             product_name = PRODUCT_NAME,
+            heading = "Error",
             content = format_args!(
                 include_str!("tmpl/error.html"),
                 e.unwrap_or_else(|| "Your request could not be processed at this time".to_string())
@@ -235,6 +236,11 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                     include_str!("tmpl/base.html"),
                     title = PRODUCT_NAME,
                     product_name = PRODUCT_NAME,
+                    heading = if query.domain.is_some() {
+                        "Search results"
+                    } else {
+                        "Newest certificates"
+                    },
                     content = if certs.is_empty() {
                         format!(
                             include_str!("tmpl/no_results.html"),
@@ -282,6 +288,7 @@ fn not_found(thing: &'static str) -> Response {
             include_str!("tmpl/base.html"),
             title = format_args!("{} - not found", PRODUCT_NAME),
             product_name = PRODUCT_NAME,
+            heading = "Not found",
             content = format_args!("{} not found.", thing),
             css = include_str!("tmpl/base.css"),
             script = ""
@@ -314,12 +321,12 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
             include_str!("tmpl/base.html"),
             title = format_args!("{} - certificate", PRODUCT_NAME),
             product_name = PRODUCT_NAME,
+            heading = domains
+                .get(0)
+                .map(|dom| String::from_utf8_lossy(dom).to_string())
+                .unwrap_or_else(String::new),
             content = format_args!(
                 include_str!("tmpl/cert_info.html"),
-                domains = domains
-                    .get(0)
-                    .map(|dom| format!("<h2>{}</h2>", String::from_utf8_lossy(dom)))
-                    .unwrap_or_else(String::new),
                 cert = cert,
                 id = leaf_hash,
             ),
@@ -480,6 +487,44 @@ async fn get_cert(
     }
 }
 
+macro_rules! pages {
+    ($($page:expr),*) => {
+        const PAGES: &[(&str, &str)] = &[
+            $(
+                ($page, include_str!(concat!(concat!("pages/", $page), ".html")))
+            )*
+        ];
+    };
+}
+
+pages!["regex"];
+
+async fn get_page(Path(page): Path<String>) -> impl IntoResponse {
+    let page = PAGES.iter().find(|(id, _)| **id == *page);
+    let page = if let Some((_, page)) = page {
+        page
+    } else {
+        return not_found("Documentation page");
+    };
+    let mut parts_iter = page.splitn(2, '\n');
+    let title = parts_iter.next().unwrap();
+    let body = parts_iter.next().unwrap();
+    (
+        StatusCode::OK,
+        html_headers(),
+        format!(
+            include_str!("tmpl/base.html"),
+            title = format_args!("{} - {}", title, PRODUCT_NAME),
+            product_name = PRODUCT_NAME,
+            heading = title,
+            content = format_args!(r#"<div class="bvfront-page-content">{}</div>"#, body),
+            css = include_str!("tmpl/base.css"),
+            script = ""
+        ),
+    )
+        .into_response()
+}
+
 async fn global_404() -> impl IntoResponse {
     not_found("Page")
 }
@@ -497,6 +542,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(get_root))
         .route("/cert/:leaf_hash", get(get_cert))
+        .route("/docs/:page", get(get_page))
         .fallback(global_404.into_service())
         .layer(Extension(cache_conn));
 

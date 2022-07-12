@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use belvi_render::Render;
 
 macro_rules! tests {

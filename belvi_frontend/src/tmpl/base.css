@@ -115,6 +115,10 @@ main {
     width: max-content;
 }
 
+.bvfront-error > h2 {
+    margin-bottom: 0.5em;
+}
+
 main > .bvcert-kv-table {
     border: none;
 }

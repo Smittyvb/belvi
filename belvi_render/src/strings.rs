@@ -74,4 +74,13 @@ mod test {
             "<code class=\"bvcert-bytes\">01101101 01100001 01100111 01101001 01100011 001</code>"
         );
     }
+
+    #[test]
+    fn bits_div8() {
+        let bits = bcder::BitString::new(0, bytes::Bytes::from("magic!"));
+        assert_eq!(
+            bits.render(),
+            "<code class=\"bvcert-bytes\">6D6167696321</code>"
+        );
+    }
 }

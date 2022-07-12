@@ -96,14 +96,18 @@ fn error(e: Option<String>) -> Response {
         .into_response()
 }
 
+fn redirect(to: &str) -> Response {
+    let mut headers = base_headers();
+    headers.insert("Location", HeaderValue::from_str(to).unwrap());
+    (StatusCode::FOUND, headers, String::new()).into_response()
+}
+
 async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     // redirect simple regex queries that match everything or nothing
     if let Some(domain) = &query.domain {
         let domain = domain.trim();
         if domain == "" || domain == "^" || domain == "$" || domain == "^$" {
-            let mut headers = base_headers();
-            headers.insert("Location", HeaderValue::from_static("/"));
-            return (StatusCode::FOUND, headers, String::new()).into_response();
+            return redirect("/");
         }
     };
 
@@ -424,8 +428,10 @@ async fn get_cert(
     };
     let ext = match parts.next() {
         None => OutputMode::Html,
-        Some("ber" | "cer" | "der") => OutputMode::Der,
+        Some("der") => OutputMode::Der,
         Some("pem") => OutputMode::Pem,
+        Some("ber" | "cer") => return redirect(&format!("/cert/{}.der", leaf_hash)),
+        Some("html") => return redirect(&format!("/cert/{}", leaf_hash)),
         _ => return error(Some("Unknown extension".to_string())),
     };
 

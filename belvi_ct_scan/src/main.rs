@@ -7,6 +7,7 @@ use std::{
     env, fs,
     path::PathBuf,
     sync::Mutex,
+    time::{Duration, Instant},
 };
 
 mod fetch_certs;
@@ -128,6 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     fetch_state.update_sths(&ctx).await;
     fetch_state.save(&ctx).await;
+    let mut last_fetch_state_check = Instant::now();
     // TODO: use Tokio mutex
     let fetch_state = Mutex::new(fetch_state);
 
@@ -174,7 +176,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
             .execute([])
             .unwrap();
-        fetch_state.lock().unwrap().save(&ctx.lock().unwrap()).await;
+        let mut inner_fetch_state = fetch_state.lock().unwrap();
+        let inner_ctx = ctx.lock().unwrap();
+        inner_fetch_state.save(&inner_ctx).await;
+        if Instant::now().duration_since(last_fetch_state_check) > Duration::from_secs(90) {
+            inner_fetch_state.update_sths(&inner_ctx).await;
+            checked_logs = HashSet::new(); // checked logs may need to be rechecked again
+            last_fetch_state_check = Instant::now();
+        }
     }
 
     Ok(())

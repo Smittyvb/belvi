@@ -289,7 +289,7 @@ fn not_found(thing: &'static str) -> Response {
         .into_response()
 }
 
-fn cert_response(cert: &Vec<u8>) -> Response {
+fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
     // first try decoding as precert, then try normal cert
     let (cert, domains) = match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
         x509_certificate::rfc5280::TbsCertificate::take_from(cons)
@@ -320,6 +320,7 @@ fn cert_response(cert: &Vec<u8>) -> Response {
                     .map(|dom| format!("<h2>{}</h2>", String::from_utf8_lossy(dom)))
                     .unwrap_or_else(String::new),
                 cert = cert,
+                id = leaf_hash,
             ),
             css = concat!(
                 include_str!("tmpl/base.css"),
@@ -437,7 +438,7 @@ async fn get_cert(
 
     match find_cert(state, leaf_hash).await {
         Ok(cert) => match ext {
-            OutputMode::Html => cert_response(&cert),
+            OutputMode::Html => cert_response(&cert, leaf_hash),
             OutputMode::Der => (
                 StatusCode::OK,
                 {

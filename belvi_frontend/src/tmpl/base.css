@@ -16,7 +16,7 @@ h1#bvfront-header > a {
 }
 
 h2 {
-    margin-top: 0;
+    margin: 0;
     font-size: 2em;
     line-height: 1;
 }
@@ -151,4 +151,24 @@ main > .bvcert-kv-table > tbody > tr > th, main > .bvcert-kv-table > tbody > tr 
     flex-direction: column;
     justify-content: end;
     height: 65%;
+}
+
+.bvfront-dl {
+    margin-top: 1em;
+    margin-bottom: 1em;
+    vertical-align: middle;
+}
+
+.bvfront-dl > a {
+    text-decoration: none;
+}
+
+.bvfront-dl > a:before {
+    /* from material icons, licensed as Apache 2.0 */
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHdpZHRoPSI0OCI+PHBhdGggZD0iTTExIDQwcS0xLjIgMC0yLjEtLjlROCAzOC4yIDggMzd2LTcuMTVoM1YzN2gyNnYtNy4xNWgzVjM3cTAgMS4yLS45IDIuMS0uOS45LTIuMS45Wm0xMy03LjY1LTkuNjUtOS42NSAyLjE1LTIuMTUgNiA2VjhoM3YxOC41NWw2LTYgMi4xNSAyLjE1WiIvPjwvc3ZnPg==);
+    content: "";
+    display: inline-block;
+    background-size: 1em 1em;
+    width: 1em;
+    height: 1em;
 }

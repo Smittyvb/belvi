@@ -506,7 +506,8 @@ async fn get_page(Path(page): Path<String>) -> impl IntoResponse {
     } else {
         return not_found("Documentation page");
     };
-    let mut parts_iter = page.splitn(2, '\n');
+    let mut parts_iter = page.splitn(3, '\n');
+    parts_iter.next().unwrap(); // ignore license
     let title = parts_iter.next().unwrap();
     let body = parts_iter.next().unwrap();
     (

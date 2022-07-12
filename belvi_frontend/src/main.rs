@@ -88,6 +88,7 @@ fn error(e: Option<String>) -> Response {
             content = format_args!(
                 include_str!("tmpl/error.html"),
                 e.unwrap_or_else(|| "Your request could not be processed at this time".to_string())
+                    .html_escape()
             ),
             css = include_str!("tmpl/base.css"),
             script = "",

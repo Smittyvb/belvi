@@ -333,6 +333,9 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
 }
 
 async fn find_cert(state: Arc<Mutex<State>>, leaf_hash: &str) -> Result<Vec<u8>, Response> {
+    if leaf_hash.len() != 32 {
+        return Err(error(Some("Cert ID is not 32 characters long".to_string())));
+    }
     let leaf_hash = match hex::decode(leaf_hash) {
         Ok(val) => val,
         Err(_) => return Err(error(Some("Cert ID must be hex".to_string()))),

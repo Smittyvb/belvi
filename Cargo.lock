@@ -243,11 +243,15 @@ name = "belvi_render"
 version = "0.1.0"
 dependencies = [
  "bcder",
+ "belvi_cache",
+ "belvi_cert",
  "bytes",
  "chrono",
  "env_logger",
+ "hex",
  "lazy_static",
  "log",
+ "tokio",
  "x509-certificate",
 ]
 

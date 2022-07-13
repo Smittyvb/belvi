@@ -36,4 +36,10 @@ impl Connection {
             .send_and_forget(resp_array!["SET", [OBJECT_PREFIX, id].concat(), content]);
         trace!("added cert to Redis: {:?}, {} bytes", id, content.len());
     }
+
+    /// Lists the keys for all certificates in the database.
+    /// Should be used for testing only, this is not fast.
+    pub async fn cached_cert_key_list(&mut self) -> Vec<Vec<u8>> {
+        self.inner.send(resp_array!["KEYS", "*"]).await.unwrap()
+    }
 }

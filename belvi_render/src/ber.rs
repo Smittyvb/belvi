@@ -65,7 +65,7 @@ fn take_cons(cons: &mut Constructed<bytes::Bytes>) -> Result<String, bcder::deco
                         Err(_) => bytes.render(),
                     })
                 }
-                Content::Constructed(cons) => take_cons(cons), // TODO
+                Content::Constructed(_) => Err(bcder::decode::Error::Unimplemented), // TODO
             }
         } else {
             match content {

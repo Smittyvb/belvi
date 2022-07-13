@@ -19,7 +19,11 @@ use tokio::{sync::Mutex, task};
 
 mod exts;
 
-const PRODUCT_NAME: &str = "Belvi";
+const PRODUCT_NAME: &str = match option_env!("BELVI_PRODUCT_NAME") {
+    // unwrap_or isn't const stable
+    Some(name) => name,
+    None => "Belvi",
+};
 
 fn get_data_path() -> PathBuf {
     let mut args = env::args_os();

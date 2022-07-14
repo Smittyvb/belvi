@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
-    extract::{Path, Query},
+    extract::{ConnectInfo, Path, Query},
     handler::Handler,
-    http::{header, HeaderMap, HeaderValue, StatusCode},
+    http::{header, HeaderMap, HeaderValue, Request, StatusCode},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::get,
     Extension, Router,
@@ -12,9 +13,12 @@ use bcder::decode::Constructed;
 use belvi_log_list::{fetcher::Fetcher, LogId, LogList};
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
+use log::debug;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, env, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    cmp::Ordering, env, fmt::Debug, net::SocketAddr, path::PathBuf, sync::Arc, time::Instant,
+};
 use tokio::{sync::Mutex, task};
 use tower_http::set_header::SetResponseHeaderLayer;
 
@@ -546,6 +550,20 @@ async fn global_404() -> impl IntoResponse {
     not_found("Page")
 }
 
+async fn log_middleware<B>(req: Request<B>, next: Next<B>) -> Response {
+    debug!(
+        "{:?} {:?} {:?} {:?}",
+        req.extensions().get::<ConnectInfo<SocketAddr>>().unwrap().0,
+        req.method(),
+        req.uri(),
+        req.headers()
+            .get(axum::http::header::USER_AGENT)
+            .map(Clone::clone)
+            .unwrap_or_else(|| HeaderValue::from_static("-")),
+    );
+    next.run(req).await
+}
+
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
     env_logger::init();
@@ -561,6 +579,7 @@ async fn main() {
         .route("/cert/:leaf_hash", get(get_cert))
         .route("/docs/:page", get(get_page))
         .fallback(global_404.into_service())
+        .layer(middleware::from_fn(log_middleware))
         .layer(Extension(cache_conn))
         .layer(SetResponseHeaderLayer::if_not_present(
             header::SERVER,
@@ -568,7 +587,7 @@ async fn main() {
         ));
 
     axum::Server::bind(&"0.0.0.0:47371".parse().unwrap())
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .unwrap();
 }

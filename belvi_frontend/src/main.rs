@@ -55,7 +55,12 @@ thread_local! {
 }
 
 fn render_domain(s: String) -> String {
-    format!(r#"<div class="bvfront-domain">{}</div>"#, s.html_escape())
+    format!(
+        r#"<div class="bvfront-domain">{}</div>"#,
+        s.html_escape()
+            // suggest linebreaks after dots
+            .replace('.', "<wbr>.")
+    )
 }
 
 fn format_date(date: DateTime<Utc>) -> String {

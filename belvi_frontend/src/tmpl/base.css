@@ -181,3 +181,35 @@ main > .bvcert-kv-table > tbody > tr > th, main > .bvcert-kv-table > tbody > tr 
     width: 1em;
     height: 1em;
 }
+
+@media (max-width: 1300px) {
+    .bvfront-cert-list > tbody > tr {
+        display: grid;
+        grid-template-areas:
+            "ts notbefore notafter"
+            "domains domains domains";
+    }
+    .bvfront-header-domains {
+        display: none;
+    }
+    .bvfront-cert-list > thead > tr {
+        display: flex;
+    }
+    .bvfront-cert-list > thead > tr > th {
+        width: 33.33%;
+        text-align: left;
+    }
+
+    .bvfront-col-ts {
+        grid-area: ts;
+    }
+    .bvfront-col-notbefore {
+        grid-area: notbefore;
+    }
+    .bvfront-col-notafter {
+        grid-area: notafter;
+    }
+    .bvfront-col-domains {
+        grid-area: domains;
+    }
+}

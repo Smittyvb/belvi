@@ -1,7 +1,7 @@
-use std::panic::catch_unwind;
-
+// SPDX-License-Identifier: Apache-2.0
 use bcder::decode::Constructed;
 use belvi_render::Render;
+use std::panic::catch_unwind;
 
 fn check(cert: Vec<u8>) {
     match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {

@@ -299,21 +299,27 @@ fn not_found(thing: &'static str) -> Response {
 
 fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
     // first try decoding as precert, then try normal cert
-    let (cert, domains) = match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
-        x509_certificate::rfc5280::TbsCertificate::take_from(cons)
-    }) {
-        Ok(tbs_cert) => (tbs_cert.render(), belvi_cert::get_cert_domains(&tbs_cert)),
-        Err(_) => {
-            let cert = Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
-                x509_certificate::rfc5280::Certificate::take_from(cons)
-            })
-            .expect("invalid cert in log");
-            (
-                cert.render(),
-                belvi_cert::get_cert_domains(&cert.tbs_certificate),
-            )
-        }
-    };
+    let (cert, domains, full_cert) =
+        match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+            x509_certificate::rfc5280::TbsCertificate::take_from(cons)
+        }) {
+            Ok(tbs_cert) => (
+                tbs_cert.render(),
+                belvi_cert::get_cert_domains(&tbs_cert),
+                false,
+            ),
+            Err(_) => {
+                let cert = Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
+                    x509_certificate::rfc5280::Certificate::take_from(cons)
+                })
+                .expect("invalid cert in log");
+                (
+                    cert.render(),
+                    belvi_cert::get_cert_domains(&cert.tbs_certificate),
+                    true,
+                )
+            }
+        };
     let first_domain = domains
         .get(0)
         .map(|dom| String::from_utf8_lossy(dom).to_string())
@@ -323,7 +329,16 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
         html_headers(),
         format!(
             include_str!("tmpl/base.html"),
-            title = format_args!("{} certificate - {}", first_domain, PRODUCT_NAME),
+            title = format_args!(
+                "{} {} - {}",
+                first_domain,
+                if full_cert {
+                    "certificate"
+                } else {
+                    "precertificate"
+                },
+                PRODUCT_NAME
+            ),
             product_name = PRODUCT_NAME,
             heading = first_domain,
             content = format_args!(

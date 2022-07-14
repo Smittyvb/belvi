@@ -79,7 +79,7 @@ fn error(e: Option<String>) -> Response {
         html_headers(),
         format!(
             include_str!("tmpl/base.html"),
-            title = format_args!("{} - error", PRODUCT_NAME),
+            title = format_args!("Error - {}", PRODUCT_NAME),
             product_name = PRODUCT_NAME,
             heading = "Error",
             content = format_args!(
@@ -230,7 +230,11 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 html_headers(),
                 format!(
                     include_str!("tmpl/base.html"),
-                    title = PRODUCT_NAME,
+                    title = if query.domain.is_some() {
+                        format!("Search results - {}", PRODUCT_NAME)
+                    } else {
+                        PRODUCT_NAME.to_string()
+                    },
                     product_name = PRODUCT_NAME,
                     heading = if query.domain.is_some() {
                         "Search results"
@@ -282,7 +286,7 @@ fn not_found(thing: &'static str) -> Response {
         html_headers(),
         format!(
             include_str!("tmpl/base.html"),
-            title = format_args!("{} - not found", PRODUCT_NAME),
+            title = format_args!("Not found - {}", PRODUCT_NAME),
             product_name = PRODUCT_NAME,
             heading = "Not found",
             content = format_args!("{} not found.", thing),
@@ -310,17 +314,18 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
             )
         }
     };
+    let first_domain = domains
+        .get(0)
+        .map(|dom| String::from_utf8_lossy(dom).to_string())
+        .unwrap_or_else(String::new);
     (
         StatusCode::OK,
         html_headers(),
         format!(
             include_str!("tmpl/base.html"),
-            title = format_args!("{} - certificate", PRODUCT_NAME),
+            title = format_args!("{} certificate - {}", first_domain, PRODUCT_NAME),
             product_name = PRODUCT_NAME,
-            heading = domains
-                .get(0)
-                .map(|dom| String::from_utf8_lossy(dom).to_string())
-                .unwrap_or_else(String::new),
+            heading = first_domain,
             content = format_args!(
                 include_str!("tmpl/cert_info.html"),
                 cert = cert,

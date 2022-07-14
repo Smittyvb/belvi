@@ -16,6 +16,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, env, path::PathBuf, sync::Arc, time::Instant};
 use tokio::{sync::Mutex, task};
+use tower_http::set_header::SetResponseHeaderLayer;
 
 mod exts;
 
@@ -57,17 +58,8 @@ fn format_date(date: DateTime<Utc>) -> String {
     date.format("%k:%M, %e %b %Y").html_escape()
 }
 
-fn base_headers() -> HeaderMap {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::SERVER,
-        HeaderValue::from_static("belvi_frontend/1.0"),
-    );
-    headers
-}
-
 fn html_headers() -> HeaderMap {
-    let mut headers = base_headers();
+    let mut headers = HeaderMap::new();
     headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
     headers
 }
@@ -103,7 +95,7 @@ fn error(e: Option<String>) -> Response {
 }
 
 fn redirect(to: &str) -> Response {
-    let mut headers = base_headers();
+    let mut headers = HeaderMap::new();
     headers.insert("Location", HeaderValue::from_str(to).unwrap());
     (StatusCode::FOUND, headers, String::new()).into_response()
 }
@@ -457,7 +449,7 @@ async fn get_cert(
             OutputMode::Der => (
                 StatusCode::OK,
                 {
-                    let mut headers = base_headers();
+                    let mut headers = HeaderMap::new();
                     // according to https://pki-tutorial.readthedocs.io/en/latest/mime.html
                     headers.insert(
                         header::CONTENT_TYPE,
@@ -471,7 +463,7 @@ async fn get_cert(
             OutputMode::Pem => (
                 StatusCode::OK,
                 {
-                    let mut headers = base_headers();
+                    let mut headers = HeaderMap::new();
                     // according to https://pki-tutorial.readthedocs.io/en/latest/mime.html
                     headers.insert(
                         header::CONTENT_TYPE,
@@ -549,7 +541,11 @@ async fn main() {
         .route("/cert/:leaf_hash", get(get_cert))
         .route("/docs/:page", get(get_page))
         .fallback(global_404.into_service())
-        .layer(Extension(cache_conn));
+        .layer(Extension(cache_conn))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            header::SERVER,
+            HeaderValue::from_static("belvi/0.1"),
+        ));
 
     axum::Server::bind(&"0.0.0.0:47371".parse().unwrap())
         .serve(app.into_make_service())

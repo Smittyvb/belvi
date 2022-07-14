@@ -25,3 +25,4 @@ hex = "0.4.3"
 regex = "1.5.5"
 reqwest = "0.11.11"
 base64 = "0.13.0"
+tower-http = { version = "0.3.4", features = ["set-header"] }

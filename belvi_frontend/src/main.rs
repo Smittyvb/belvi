@@ -208,7 +208,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 } else {
                     match certs.len().cmp(&(limit as usize)) {
                         Ordering::Less => {}
-                        // regex matching would otherwise go forever
+                        // stop requesting rows once we get enough
                         Ordering::Equal => break,
                         Ordering::Greater => unreachable!(),
                     }
@@ -222,6 +222,11 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                         not_after: val.get(6).unwrap(),
                     });
                 }
+            }
+            for cert in &mut certs {
+                // so when displayed they are longest to shortest
+                cert.domain.sort_by(|a, b| a.len().cmp(&b.len()));
+                cert.domain.reverse();
             }
             let run_time = (Instant::now() - start).as_secs_f64();
             let domain = query

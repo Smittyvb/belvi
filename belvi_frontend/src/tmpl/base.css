@@ -96,6 +96,11 @@ main {
     width: max-content;
 }
 
+.bvfront-cert-list .bvfront-domains {
+    text-align: right;
+    display: inline-block;
+}
+
 .bvfront-table-link {
     display: block;
     width: 100%;

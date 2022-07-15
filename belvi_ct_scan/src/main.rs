@@ -136,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
     let mut checked_logs: HashSet<String> = HashSet::new();
     let ctx = Mutex::new(ctx);
-    while checked_logs.len() < active_logs.len() {
+    loop {
         fastrand::shuffle(&mut active_logs);
 
         {
@@ -179,12 +179,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut inner_fetch_state = fetch_state.lock().unwrap();
         let inner_ctx = ctx.lock().unwrap();
         inner_fetch_state.save(&inner_ctx).await;
-        if Instant::now().duration_since(last_fetch_state_check) > Duration::from_secs(90) {
+        if Instant::now().duration_since(last_fetch_state_check) > Duration::from_secs(90)
+            || checked_logs.len() == active_logs.len()
+        {
             inner_fetch_state.update_sths(&inner_ctx).await;
             checked_logs = HashSet::new(); // checked logs may need to be rechecked again
             last_fetch_state_check = Instant::now();
         }
     }
-
-    Ok(())
 }

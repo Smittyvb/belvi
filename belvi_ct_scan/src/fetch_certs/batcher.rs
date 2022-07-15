@@ -67,7 +67,7 @@ impl HistState {
     }
 }
 
-impl<'ctx> FetchState {
+impl FetchState {
     /// Returns the start and end index (inclusive) of the entries to retrieve next.
     /// The return value can be passed directly to the get-entries endpoint. `None` indicates
     /// nothing should be fetched. The return value will be adjacent to the current fetched

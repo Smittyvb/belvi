@@ -29,7 +29,7 @@ impl<'ctx> FetchState {
             self_mutex
                 .lock()
                 .unwrap()
-                .next_batch(&*inner_ctx, id.clone())
+                .next_batch(&inner_ctx, id.clone())
         };
         trace!("Desired range is {:?}", next_batch);
         if let Some((start, end)) = next_batch {

@@ -96,7 +96,7 @@ impl Ctx {
         }
         let start_time = Utc::now();
         debug!("Start time is {:?}", start_time);
-        let cache_certs = !env::var("BELVI_NO_CACHE").is_ok();
+        let cache_certs = env::var("BELVI_NO_CACHE").is_err();
         let sqlite_conn = rusqlite::Connection::open(db_path).expect("couldn't open DB");
         debug!("SQLite version is {}", rusqlite::version());
         sqlite_conn

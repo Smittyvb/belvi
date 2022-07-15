@@ -140,7 +140,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                     certs_stmt.query([]).unwrap(),
                     Some(
                         certs_count_stmt
-                            .query_row([], |row| Ok(row.get::<_, usize>(0)?))
+                            .query_row([], |row| row.get::<_, usize>(0))
                             .unwrap(),
                     ),
                 )
@@ -230,7 +230,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             }
             for cert in &mut certs {
                 // so when displayed they are longest to shortest
-                cert.domain.sort_by(|a, b| a.len().cmp(&b.len()));
+                cert.domain.sort_by_key(|a| a.len());
                 cert.domain.reverse();
             }
             let run_time = (Instant::now() - start).as_secs_f64();

@@ -186,14 +186,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let nothing_left = checked_logs.len() == active_logs.len();
         if nothing_left {
             info!("Fetched all possible certs");
-            // analyze the database to give some time for new certs to come in
-            ctx.lock()
-                .unwrap()
-                .sqlite_conn
-                .prepare_cached("ANALYZE")
-                .unwrap()
-                .execute([])
-                .unwrap();
             // wait for some time
             tokio::time::sleep(Duration::from_secs(10)).await;
         }

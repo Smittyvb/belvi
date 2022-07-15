@@ -120,6 +120,7 @@ impl Ctx {
 }
 
 const MAX_RECHECK_GAP: u64 = 90;
+const WAIT_TIME: u64 = 8;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -137,19 +138,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut active_logs: Vec<Log> = ctx.active_logs().cloned().collect();
     let mut checked_logs: HashSet<String> = HashSet::new();
+    ctx.sqlite_conn
+        .prepare_cached("BEGIN DEFERRED")
+        .unwrap()
+        .execute([])
+        .unwrap();
     let ctx = Mutex::new(ctx);
     loop {
         fastrand::shuffle(&mut active_logs);
-
-        {
-            ctx.lock()
-                .unwrap()
-                .sqlite_conn
-                .prepare_cached("BEGIN DEFERRED")
-                .unwrap()
-                .execute([])
-                .unwrap();
-        }
         let mut futures = Vec::new();
         let mut logs = Vec::new();
         for log in &active_logs {
@@ -171,28 +167,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 checked_logs.insert(log.log_id.clone());
             }
         }
-        ctx.lock()
-            .unwrap()
-            .sqlite_conn
-            .prepare_cached("COMMIT")
-            .unwrap()
-            .execute([])
-            .unwrap();
-        let mut inner_fetch_state = fetch_state.lock().unwrap();
-        let inner_ctx = ctx.lock().unwrap();
-        inner_fetch_state.save(&inner_ctx).await;
+
         let long_time_since_recheck = Instant::now().duration_since(last_fetch_state_check)
             > Duration::from_secs(MAX_RECHECK_GAP);
         let nothing_left = checked_logs.len() == active_logs.len();
-        if nothing_left {
-            info!("Fetched all possible certs");
-            // wait for some time
-            tokio::time::sleep(Duration::from_secs(10)).await;
-        }
+
         if long_time_since_recheck || nothing_left {
+            // save state
+            let inner_ctx = ctx.lock().unwrap();
+            let mut inner_fetch_state = fetch_state.lock().unwrap();
+            inner_fetch_state.save(&inner_ctx).await;
+            inner_ctx
+                .sqlite_conn
+                .prepare_cached("COMMIT")
+                .unwrap()
+                .execute([])
+                .unwrap();
+
+            // wait if needed
+            if nothing_left {
+                info!("Fetched all possible certs");
+                // wait for some time
+                tokio::time::sleep(Duration::from_secs(WAIT_TIME)).await;
+            }
+
+            // update STHs
             inner_fetch_state.update_sths(&inner_ctx).await;
             checked_logs = HashSet::new(); // checked logs may need to be rechecked again
             last_fetch_state_check = Instant::now();
+
+            // start another tx
+            inner_ctx
+                .sqlite_conn
+                .prepare_cached("BEGIN DEFERRED")
+                .unwrap()
+                .execute([])
+                .unwrap();
         }
     }
 }

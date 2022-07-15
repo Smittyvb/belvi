@@ -31,7 +31,7 @@ pub fn get_cert_domains(cert: &TbsCertificate) -> Vec<Vec<u8>> {
                             match take_tagged_ber(subcons) {
                                 Ok(dom) => {
                                     if !domains.contains(&dom) && !doms.contains(&dom) {
-                                        doms.push(dom)
+                                        doms.push(dom);
                                     }
                                 }
                                 Err(decode::Error::Malformed) => break,

@@ -230,7 +230,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             }
             for cert in &mut certs {
                 // so when displayed they are longest to shortest
-                cert.domain.sort_by_key(|a| a.len());
+                cert.domain.sort_by_key(String::len);
                 cert.domain.reverse();
             }
             let run_time = (Instant::now() - start).as_secs_f64();

@@ -13,6 +13,7 @@ pub fn entity_escape_char(khar: char) -> String {
 /// This works by replacing every character with it's HTML entity, except for letters, numbers,
 /// spaces, etc. This *does* mean that we sometimes "over-escape", but it's worth it for more
 /// security.
+#[must_use]
 pub fn html_escape(text: &str) -> String {
     let mut result = String::with_capacity(text.len());
     for khar in text.chars() {

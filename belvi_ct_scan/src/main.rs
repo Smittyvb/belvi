@@ -119,6 +119,8 @@ impl Ctx {
     }
 }
 
+const MAX_RECHECK_GAP: u64 = 90;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -179,9 +181,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut inner_fetch_state = fetch_state.lock().unwrap();
         let inner_ctx = ctx.lock().unwrap();
         inner_fetch_state.save(&inner_ctx).await;
-        if Instant::now().duration_since(last_fetch_state_check) > Duration::from_secs(90)
-            || checked_logs.len() == active_logs.len()
-        {
+        let long_time_since_recheck = Instant::now().duration_since(last_fetch_state_check)
+            > Duration::from_secs(MAX_RECHECK_GAP);
+        let nothing_left = checked_logs.len() == active_logs.len();
+        if nothing_left {
+            info!("Fetched all possible certs");
+            // analyze the database to give some time for new certs to come in
+            ctx.lock()
+                .unwrap()
+                .sqlite_conn
+                .prepare_cached("ANALYZE")
+                .unwrap()
+                .execute([])
+                .unwrap();
+            // wait for some time
+            tokio::time::sleep(Duration::from_secs(10)).await;
+        }
+        if long_time_since_recheck || nothing_left {
             inner_fetch_state.update_sths(&inner_ctx).await;
             checked_logs = HashSet::new(); // checked logs may need to be rechecked again
             last_fetch_state_check = Instant::now();

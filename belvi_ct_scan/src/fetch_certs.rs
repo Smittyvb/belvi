@@ -76,7 +76,7 @@ impl<'ctx> FetchState {
                             "INSERT OR IGNORE INTO domains (leaf_hash, domain) VALUES (?, ?)",
                         )
                         .unwrap();
-                    let mut files_to_write = Vec::new();
+                    let mut new_cache_items = Vec::new();
                     for (idx, entry) in entries.into_iter().enumerate() {
                         let idx: u64 = idx as u64 + start;
                         let log_timestamp = entry.leaf_input.timestamped_entry.timestamp;
@@ -136,16 +136,17 @@ impl<'ctx> FetchState {
                                 ])
                                 .expect("failed to insert domain");
                         }
-                        // wrap in spawn to make it parallel instead of just concurrent
-                        let file_contents = log_entry.inner_cert().clone();
-                        files_to_write.push((leaf_hash_bytes, file_contents));
+                        if inner_ctx.cache_certs {
+                            let cache_item_contents = log_entry.inner_cert().clone();
+                            new_cache_items.push((leaf_hash_bytes, cache_item_contents));
+                        }
                     }
                     drop(cert_insert);
                     drop(entry_insert);
                     drop(domain_insert);
                     // TODO: parallelize
-                    for (id, content) in files_to_write {
-                        inner_ctx.redis_conn.new_cert(&id, &content);
+                    for (id, content) in new_cache_items {
+                        inner_ctx.redis_conn.new_cert(&id, &content); // disable by default
                     }
                     drop(inner_ctx);
                     debug!("Fetched {}-{} from \"{}\"", start, end, log.description);

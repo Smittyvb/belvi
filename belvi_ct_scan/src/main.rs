@@ -61,6 +61,7 @@ struct Ctx {
     log_list: LogList,
     fetcher: Fetcher,
     start_time: DateTime<Utc>,
+    cache_certs: bool,
     log_transient: HashMap<LogId, LogTransient>,
     sqlite_conn: rusqlite::Connection,
     redis_conn: belvi_cache::Connection,
@@ -95,8 +96,9 @@ impl Ctx {
         }
         let start_time = Utc::now();
         debug!("Start time is {:?}", start_time);
-        debug!("SQLite version is {}", rusqlite::version());
+        let cache_certs = !env::var("BELVI_NO_CACHE").is_ok();
         let sqlite_conn = rusqlite::Connection::open(db_path).expect("couldn't open DB");
+        debug!("SQLite version is {}", rusqlite::version());
         sqlite_conn
             .execute_batch(include_str!("../../shared_sql/init_db.sql"))
             .unwrap();
@@ -105,6 +107,7 @@ impl Ctx {
             fetch_state_path,
             certs_path,
             start_time,
+            cache_certs,
             sqlite_conn,
             log_transient: HashMap::new(),
             log_list: LogList::google(),

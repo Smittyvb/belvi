@@ -6,7 +6,7 @@ use std::{
     collections::{HashMap, HashSet},
     env, fs,
     path::PathBuf,
-    sync::Mutex,
+    sync::{atomic, Mutex},
     time::{Duration, Instant},
 };
 
@@ -125,10 +125,18 @@ impl Ctx {
 const MAX_RECHECK_GAP: u64 = 90;
 const WAIT_TIME: u64 = 8;
 
+static STOP_FETCHING: atomic::AtomicBool = atomic::AtomicBool::new(false);
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     info!("Starting Belvi fetcher");
+
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.unwrap();
+        println!("Recieved SIGINT, stopping after next batch");
+        STOP_FETCHING.store(true, atomic::Ordering::Relaxed);
+    });
 
     let ctx = Ctx::from_env_sync(belvi_cache::Connection::new().await);
     let mut fetch_state = FetchState::new_sync(&ctx);
@@ -174,8 +182,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let long_time_since_recheck = Instant::now().duration_since(last_fetch_state_check)
             > Duration::from_secs(MAX_RECHECK_GAP);
         let nothing_left = checked_logs.len() == active_logs.len();
+        let stop_fetching = STOP_FETCHING.load(atomic::Ordering::Relaxed);
 
-        if long_time_since_recheck || nothing_left {
+        if long_time_since_recheck || nothing_left || stop_fetching {
             // save state
             let inner_ctx = ctx.lock().unwrap();
             let mut inner_fetch_state = fetch_state.lock().unwrap();
@@ -186,6 +195,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap()
                 .execute([])
                 .unwrap();
+
+            if stop_fetching {
+                return Ok(());
+            }
 
             // wait if needed
             if nothing_left {

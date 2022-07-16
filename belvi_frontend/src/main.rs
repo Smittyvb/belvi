@@ -22,6 +22,7 @@ use std::{
 use tokio::{sync::Mutex, task};
 use tower_http::set_header::SetResponseHeaderLayer;
 
+mod domain_sort;
 mod exts;
 
 const PRODUCT_NAME: &str = match option_env!("BELVI_PRODUCT_NAME") {
@@ -230,8 +231,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
             }
             for cert in &mut certs {
                 // so when displayed they are longest to shortest
-                cert.domain.sort_by_key(String::len);
-                cert.domain.reverse();
+                domain_sort::sort(&mut cert.domain);
             }
             let run_time = (Instant::now() - start).as_secs_f64();
             let domain = query

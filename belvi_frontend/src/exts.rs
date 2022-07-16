@@ -28,8 +28,8 @@ pub fn register(db: &mut Connection) {
                     Ok(builder.build()?)
                 },
             )?;
-            Ok(match ctx.get_raw(1).as_str() {
-                Ok(text) => regex.is_match(text.as_bytes()),
+            Ok(match ctx.get_raw(1).as_bytes() {
+                Ok(text) => regex.is_match(text),
                 Err(rusqlite::types::FromSqlError::InvalidType) => false,
                 Err(e) => panic!("unexpected error {:#?}", e),
             })

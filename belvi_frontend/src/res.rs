@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use axum::{
     http::{HeaderMap, HeaderValue},
     response::{IntoResponse, Response},

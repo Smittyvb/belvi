@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 //! This library has modules useful for the frontend. It is seperate from the binary target to
 //! allow it to be tested seperately.
 

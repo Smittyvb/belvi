@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 use std::iter;
 
 /// Sort a list of domains into *domain order*. Domain order is computed by splitting the inputs

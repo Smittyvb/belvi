@@ -10,6 +10,7 @@ use axum::{
     Extension, Router,
 };
 use bcder::decode::Constructed;
+use belvi_frontend::*;
 use belvi_log_list::{fetcher::Fetcher, LogId, LogList};
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -21,9 +22,6 @@ use std::{
 };
 use tokio::{sync::Mutex, task};
 use tower_http::set_header::SetResponseHeaderLayer;
-
-mod domain_sort;
-mod exts;
 
 const PRODUCT_NAME: &str = match option_env!("BELVI_PRODUCT_NAME") {
     // unwrap_or isn't const stable

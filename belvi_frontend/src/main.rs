@@ -13,21 +13,11 @@ use bcder::decode::Constructed;
 use belvi_frontend::*;
 use belvi_log_list::{fetcher::Fetcher, LogId, LogList};
 use belvi_render::{html_escape::HtmlEscapable, Render};
-use chrono::{DateTime, NaiveDateTime, Utc};
 use log::debug;
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
-use std::{
-    cmp::Ordering, env, fmt::Debug, net::SocketAddr, path::PathBuf, sync::Arc, time::Instant,
-};
+use std::{env, fmt::Debug, net::SocketAddr, path::PathBuf, sync::Arc, time::Instant};
 use tokio::{sync::Mutex, task};
 use tower_http::set_header::SetResponseHeaderLayer;
-
-const PRODUCT_NAME: &str = match option_env!("BELVI_PRODUCT_NAME") {
-    // unwrap_or isn't const stable
-    Some(name) => name,
-    None => "Belvi",
-};
 
 fn get_data_path() -> PathBuf {
     let mut args = env::args_os();
@@ -53,67 +43,15 @@ thread_local! {
     };
 }
 
-fn render_domain(s: String) -> String {
-    format!(
-        r#"<div class="bvfront-domain">{}</div>"#,
-        s.html_escape()
-            // suggest linebreaks after dots
-            .replace('.', "<wbr>.")
-    )
-}
-
-fn format_date(date: DateTime<Utc>) -> String {
-    date.format("%k:%M, %e %b %Y").html_escape()
-}
-
-fn html_headers() -> HeaderMap {
-    let mut headers = HeaderMap::new();
-    headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
-    headers
-}
-
-#[derive(Debug, Deserialize)]
-struct RootQuery {
-    domain: Option<String>,
-    limit: Option<u32>,
-}
-
 const MAX_LIMIT: u32 = 200;
 const DEFAULT_LIMIT: u32 = 100;
 
-fn error(e: Option<String>) -> Response {
-    (
-        StatusCode::BAD_REQUEST,
-        html_headers(),
-        format!(
-            include_str!("tmpl/base.html"),
-            title = format_args!("Error - {}", PRODUCT_NAME),
-            product_name = PRODUCT_NAME,
-            heading = "Error",
-            content = format_args!(
-                include_str!("tmpl/error.html"),
-                e.unwrap_or_else(|| "Your request could not be processed at this time".to_string())
-                    .html_escape()
-            ),
-            css = include_str!("tmpl/base.css"),
-            script = "",
-        ),
-    )
-        .into_response()
-}
-
-fn redirect(to: &str) -> Response {
-    let mut headers = HeaderMap::new();
-    headers.insert("Location", HeaderValue::from_str(to).unwrap());
-    (StatusCode::FOUND, headers, String::new()).into_response()
-}
-
-async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
+async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
     // redirect simple regex queries that match everything or nothing
     if let Some(domain) = &query.domain {
         let domain = domain.trim();
         if domain == "" || domain == "^" || domain == "$" || domain == "^$" {
-            return redirect("/");
+            return res::redirect("/");
         }
     };
 
@@ -125,112 +63,10 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     task::spawn_blocking(move || {
         DB_CONN.with(|db| {
             let start = Instant::now();
-            let mut certs_stmt = db
-                .prepare_cached(include_str!("queries/recent_certs.sql"))
-                .unwrap();
-            let mut certs_regex_stmt = db
-                .prepare_cached(include_str!("queries/recent_certs_regex.sql"))
-                .unwrap();
-            let mut certs_count_stmt = db.prepare_cached("SELECT COUNT(*) FROM certs").unwrap();
-            let (mut certs_rows, count) = if let Some(domain) = &query.domain {
-                (certs_regex_stmt.query([domain]).unwrap(), None)
-            } else {
-                (
-                    certs_stmt.query([]).unwrap(),
-                    Some(
-                        certs_count_stmt
-                            .query_row([], |row| row.get::<_, usize>(0))
-                            .unwrap(),
-                    ),
-                )
+            let (certs, count) = match query.search_sync(&db, limit) {
+                Ok(v) => v,
+                Err(resp) => return resp,
             };
-
-            // log_entries.leaf_hash, log_entries.log_id, log_entries.ts, domains.domain, certs.extra_hash, certs.not_before, certs.not_after
-            #[derive(Debug, Serialize, Deserialize)]
-            struct CertData {
-                leaf_hash: Vec<u8>,
-                log_id: u32,
-                ts: i64,
-                domain: Vec<String>,
-                extra_hash: Vec<u8>,
-                not_before: i64,
-                not_after: i64,
-            }
-            impl CertData {
-                fn render(&self) -> String {
-                    let domains = self.domain.iter().fold(String::new(), |a, b| a + b + "");
-                    let logged_at = DateTime::<Utc>::from_utc(
-                        NaiveDateTime::from_timestamp(self.ts / 1000, 0),
-                        Utc,
-                    );
-                    let not_before = DateTime::<Utc>::from_utc(
-                        NaiveDateTime::from_timestamp(self.not_before, 0),
-                        Utc,
-                    );
-                    let not_after = DateTime::<Utc>::from_utc(
-                        NaiveDateTime::from_timestamp(self.not_after, 0),
-                        Utc,
-                    );
-                    format!(
-                        include_str!("tmpl/cert.html"),
-                        domains = domains,
-                        ts3339 = logged_at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                        ts = format_date(logged_at),
-                        not_before3339 =
-                            not_before.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                        not_before = format_date(not_before),
-                        not_after3339 =
-                            not_after.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-                        not_after = format_date(not_after),
-                        json = serde_json::to_string(self).unwrap().html_escape(),
-                        cert_link = hex::encode(&self.leaf_hash),
-                    )
-                }
-            }
-            let mut certs = Vec::new();
-            loop {
-                let val = match certs_rows.next() {
-                    Ok(Some(val)) => val,
-                    Ok(None) => break,
-                    Err(rusqlite::Error::SqliteFailure(_, err)) => return error(err),
-                    Err(e) => panic!("unexpected error fetching certs {:#?}", e),
-                };
-                let domain = match val.get(3) {
-                    Ok(domain) => render_domain(domain),
-                    Err(rusqlite::Error::InvalidColumnType(_, _, rusqlite::types::Type::Null)) => {
-                        "(none)".to_string()
-                    }
-                    other => panic!("unexpected domain fetching error {:?}", other),
-                };
-                let leaf_hash = val.get(0).unwrap();
-                if let Some(true) = certs
-                    .last()
-                    .map(|last: &CertData| last.leaf_hash == leaf_hash)
-                {
-                    // extension of last
-                    certs.last_mut().unwrap().domain.push(domain);
-                } else {
-                    match certs.len().cmp(&(limit as usize)) {
-                        Ordering::Less => {}
-                        // stop requesting rows once we get enough
-                        Ordering::Equal => break,
-                        Ordering::Greater => unreachable!(),
-                    }
-                    certs.push(CertData {
-                        leaf_hash,
-                        log_id: val.get(1).unwrap(),
-                        ts: val.get(2).unwrap(),
-                        domain: vec![domain],
-                        extra_hash: val.get(4).unwrap(),
-                        not_before: val.get(5).unwrap(),
-                        not_after: val.get(6).unwrap(),
-                    });
-                }
-            }
-            for cert in &mut certs {
-                // so when displayed they are longest to shortest
-                domain_sort::sort(&mut cert.domain);
-            }
             let run_time = (Instant::now() - start).as_secs_f64();
             let domain = query
                 .domain
@@ -239,7 +75,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                 .html_escape();
             (
                 StatusCode::OK,
-                html_headers(),
+                res::html_headers(),
                 format!(
                     include_str!("tmpl/base.html"),
                     title = if query.domain.is_some() {
@@ -276,7 +112,7 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
                             domain = domain,
                             certs = certs
                                 .iter()
-                                .map(CertData::render)
+                                .map(search::CertData::render)
                                 .fold(String::new(), |a, b| a + &b),
                             time = run_time,
                         )
@@ -290,23 +126,6 @@ async fn get_root(query: Query<RootQuery>) -> impl IntoResponse {
     })
     .await
     .unwrap()
-}
-
-fn not_found(thing: &'static str) -> Response {
-    (
-        StatusCode::NOT_FOUND,
-        html_headers(),
-        format!(
-            include_str!("tmpl/base.html"),
-            title = format_args!("Not found - {}", PRODUCT_NAME),
-            product_name = PRODUCT_NAME,
-            heading = "Not found",
-            content = format_args!("{} not found.", thing),
-            css = include_str!("tmpl/base.css"),
-            script = ""
-        ),
-    )
-        .into_response()
 }
 
 fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
@@ -338,7 +157,7 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
         .unwrap_or_else(String::new);
     (
         StatusCode::OK,
-        html_headers(),
+        res::html_headers(),
         format!(
             include_str!("tmpl/base.html"),
             title = format_args!(
@@ -370,11 +189,13 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
 
 async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec<u8>, Response> {
     if leaf_hash.len() != 32 {
-        return Err(error(Some("Cert ID is not 32 characters long".to_string())));
+        return Err(res::error(Some(
+            "Cert ID is not 32 characters long".to_string(),
+        )));
     }
     let leaf_hash = match hex::decode(leaf_hash) {
         Ok(val) => val,
-        Err(_) => return Err(error(Some("Cert ID must be hex".to_string()))),
+        Err(_) => return Err(res::error(Some("Cert ID must be hex".to_string()))),
     };
     let maybe_cert = { state.lock().await.cache_conn.get_cert(&leaf_hash).await };
     match maybe_cert {
@@ -397,7 +218,7 @@ async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec
                 logs
             });
             if wanted_logs.is_empty() {
-                Err(not_found("Certificate"))
+                Err(res::not_found("Certificate"))
             } else {
                 let mut state = state.lock().await;
                 let mut matching_logs = state
@@ -413,7 +234,11 @@ async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec
                     });
                 let (log, idx) = match matching_logs.next() {
                     Some(val) => val,
-                    None => return Err(error(Some("Found no current logs with cert".to_string()))),
+                    None => {
+                        return Err(res::error(Some(
+                            "Found no current logs with cert".to_string(),
+                        )))
+                    }
                 };
                 let entries = state
                     .fetcher
@@ -422,7 +247,7 @@ async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec
                 let entries = match entries {
                     Ok(val) => val,
                     Err(err) => {
-                        return Err(error(Some(format!(
+                        return Err(res::error(Some(format!(
                             "Error fetching cert from log: {:#?}",
                             err
                         ))))
@@ -430,9 +255,9 @@ async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec
                 };
                 match entries.len() {
                     1 => (),
-                    0 => return Err(error(Some("Log found no cert at index".to_string()))),
+                    0 => return Err(res::error(Some("Log found no cert at index".to_string()))),
                     _ => {
-                        return Err(error(Some(
+                        return Err(res::error(Some(
                             "Log responded with more certs than requested".to_string(),
                         )))
                     }
@@ -464,15 +289,15 @@ async fn get_cert(
     let mut parts = leaf_hash.split('.');
     let leaf_hash = match parts.next() {
         Some(val) => val,
-        None => return error(Some("No leaf hash".to_string())),
+        None => return res::error(Some("No leaf hash".to_string())),
     };
     let ext = match parts.next() {
         None => OutputMode::Html,
         Some("der") => OutputMode::Der,
         Some("pem") => OutputMode::Pem,
-        Some("ber" | "cer") => return redirect(&format!("/cert/{}.der", leaf_hash)),
-        Some("html") => return redirect(&format!("/cert/{}", leaf_hash)),
-        _ => return error(Some("Unknown extension".to_string())),
+        Some("ber" | "cer") => return res::redirect(&format!("/cert/{}.der", leaf_hash)),
+        Some("html") => return res::redirect(&format!("/cert/{}", leaf_hash)),
+        _ => return res::error(Some("Unknown extension".to_string())),
     };
 
     match find_cert(state, leaf_hash).await {
@@ -532,7 +357,7 @@ async fn get_page(Path(page): Path<String>) -> impl IntoResponse {
     let page = if let Some((_, page)) = page {
         page
     } else {
-        return not_found("Documentation page");
+        return res::not_found("Documentation page");
     };
     let mut parts_iter = page.splitn(3, '\n');
     parts_iter.next().unwrap(); // ignore license
@@ -540,7 +365,7 @@ async fn get_page(Path(page): Path<String>) -> impl IntoResponse {
     let body = parts_iter.next().unwrap();
     (
         StatusCode::OK,
-        html_headers(),
+        res::html_headers(),
         format!(
             include_str!("tmpl/base.html"),
             title = format_args!("{} - {}", title, PRODUCT_NAME),
@@ -555,7 +380,7 @@ async fn get_page(Path(page): Path<String>) -> impl IntoResponse {
 }
 
 async fn global_404() -> impl IntoResponse {
-    not_found("Page")
+    res::not_found("Page")
 }
 
 async fn log_middleware<B>(req: Request<B>, next: Next<B>) -> Response {

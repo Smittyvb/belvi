@@ -3,3 +3,11 @@
 
 pub mod domain_sort;
 pub mod exts;
+pub mod res;
+pub mod search;
+
+pub const PRODUCT_NAME: &str = match option_env!("BELVI_PRODUCT_NAME") {
+    // unwrap_or isn't const stable
+    Some(name) => name,
+    None => "Belvi",
+};

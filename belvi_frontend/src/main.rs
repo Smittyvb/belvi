@@ -35,7 +35,7 @@ fn get_data_path() -> PathBuf {
     args.nth(1).unwrap().into()
 }
 
-struct State {
+struct CacheState {
     cache_conn: belvi_cache::Connection,
     log_list: LogList,
     fetcher: Fetcher,
@@ -370,7 +370,7 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
         .into_response()
 }
 
-async fn find_cert(state: Arc<Mutex<State>>, leaf_hash: &str) -> Result<Vec<u8>, Response> {
+async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec<u8>, Response> {
     if leaf_hash.len() != 32 {
         return Err(error(Some("Cert ID is not 32 characters long".to_string())));
     }
@@ -454,7 +454,7 @@ async fn find_cert(state: Arc<Mutex<State>>, leaf_hash: &str) -> Result<Vec<u8>,
 
 async fn get_cert(
     Path(leaf_hash): Path<String>,
-    Extension(state): Extension<Arc<Mutex<State>>>,
+    Extension(state): Extension<Arc<Mutex<CacheState>>>,
 ) -> impl IntoResponse {
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     enum OutputMode {
@@ -578,7 +578,7 @@ async fn log_middleware<B>(req: Request<B>, next: Next<B>) -> Response {
 async fn main() {
     env_logger::init();
 
-    let cache_conn = Arc::new(Mutex::new(State {
+    let cache_state = Arc::new(Mutex::new(CacheState {
         cache_conn: belvi_cache::Connection::new().await,
         log_list: LogList::google(),
         fetcher: Fetcher::new(),
@@ -590,7 +590,7 @@ async fn main() {
         .route("/docs/:page", get(get_page))
         .fallback(global_404.into_service())
         .layer(middleware::from_fn(log_middleware))
-        .layer(Extension(cache_conn))
+        .layer(Extension(cache_state))
         .layer(SetResponseHeaderLayer::if_not_present(
             header::SERVER,
             HeaderValue::from_static("belvi/0.1"),

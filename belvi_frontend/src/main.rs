@@ -15,14 +15,9 @@ use belvi_log_list::{fetcher::Fetcher, LogId, LogList};
 use belvi_render::{html_escape::HtmlEscapable, Render};
 use log::debug;
 use rusqlite::Connection;
-use std::{env, fmt::Debug, net::SocketAddr, path::PathBuf, sync::Arc, time::Instant};
+use std::{fmt::Debug, net::SocketAddr, sync::Arc, time::Instant};
 use tokio::{sync::Mutex, task};
 use tower_http::set_header::SetResponseHeaderLayer;
-
-fn get_data_path() -> PathBuf {
-    let mut args = env::args_os();
-    args.nth(1).unwrap().into()
-}
 
 struct CacheState {
     cache_conn: belvi_cache::Connection,
@@ -32,15 +27,7 @@ struct CacheState {
 
 // TODO: use put in global state
 thread_local! {
-    static DB_CONN: Connection = {
-        let db_path = get_data_path().join("data.db");
-        // OPEN_CREATE isn't passed, so we don't create the DB if it doesn't exist
-        let mut db = Connection::open(db_path).unwrap();
-        // this can write to the database so we can't open it as readonly
-        db.execute_batch(include_str!("../../shared_sql/init_db.sql")).unwrap();
-        exts::register(&mut db);
-        db
-    };
+    static DB_CONN: Connection = db::connect();
 }
 
 const MAX_LIMIT: u32 = 200;

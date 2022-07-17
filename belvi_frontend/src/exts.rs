@@ -12,6 +12,17 @@ fn configure_regex(b: &mut RegexBuilder) {
         .nest_limit(18);
 }
 
+fn domrev(dom: &[u8]) -> Vec<u8> {
+    let mut v = Vec::with_capacity(2);
+    for part in dom.rsplit(|c| *c == b'.') {
+        v.extend_from_slice(part);
+        v.push(b'.');
+    }
+    v.pop(); // remove last dot
+    v.shrink_to_fit();
+    v
+}
+
 pub fn register(db: &mut Connection) {
     // https://docs.rs/rusqlite/latest/rusqlite/functions/index.html
     db.create_scalar_function(
@@ -36,6 +47,17 @@ pub fn register(db: &mut Connection) {
         },
     )
     .unwrap();
+
+    db.create_scalar_function(
+        "domrev",
+        1,
+        FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC,
+        move |ctx| match ctx.get_raw(0).as_bytes() {
+            Ok(text) => Ok(domrev(text)),
+            Err(e) => panic!("unexpected error {:#?}", e),
+        },
+    )
+    .unwrap();
 }
 
 #[cfg(test)]
@@ -43,7 +65,7 @@ mod test {
     use super::*;
 
     #[test]
-    pub fn regex() {
+    fn regex() {
         let mut db = Connection::open_in_memory().unwrap();
         register(&mut db);
         fn assert_match(db: &mut Connection, query: &'static str, matches: bool) {
@@ -72,7 +94,7 @@ mod test {
 
     /// Ensures that the regex complexity limits still allow certain regexes.
     #[test]
-    pub fn complexity() {
+    fn complexity() {
         fn test_regex(r: &'static str, valid: bool) {
             let mut builder = RegexBuilder::new(r);
             configure_regex(&mut builder);
@@ -83,5 +105,34 @@ mod test {
             r#"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"#,
             true,
         );
+    }
+
+    #[test]
+    fn domrev() {
+        let mut db = Connection::open_in_memory().unwrap();
+        register(&mut db);
+
+        fn t(db: &mut Connection, query: &str, result: &[u8]) {
+            println!("Trying {}", query);
+            let val: Vec<u8> = db
+                .prepare(&format!("SELECT {}", query))
+                .unwrap()
+                .query([])
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .get(0)
+                .unwrap();
+            assert_eq!(val, result);
+        }
+
+        t(&mut db, "domrev('abc')", b"abc");
+        t(&mut db, "domrev('abc.def')", b"def.abc");
+        t(&mut db, "domrev('abc.def.ghi')", b"ghi.def.abc");
+        t(&mut db, "domrev('a.')", b".a");
+        t(&mut db, "domrev('.a')", b"a.");
+        t(&mut db, "domrev('.')", b".");
+        t(&mut db, "domrev('.a.')", b".a.");
     }
 }

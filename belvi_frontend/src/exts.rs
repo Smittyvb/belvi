@@ -13,6 +13,10 @@ fn configure_regex(b: &mut RegexBuilder) {
 }
 
 fn domrev(dom: &[u8]) -> Vec<u8> {
+    if dom.contains(&b'@') {
+        // looks like an email, don't modify
+        return dom.to_vec();
+    }
     let mut v = Vec::with_capacity(2);
     for part in dom.rsplit(|c| *c == b'.') {
         v.extend_from_slice(part);
@@ -134,5 +138,6 @@ mod test {
         t(&mut db, "domrev('.a')", b"a.");
         t(&mut db, "domrev('.')", b".");
         t(&mut db, "domrev('.a.')", b".a.");
+        t(&mut db, "domrev('abc@example.com')", b"abc@example.com");
     }
 }

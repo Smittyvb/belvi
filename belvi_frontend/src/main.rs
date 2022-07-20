@@ -32,12 +32,13 @@ thread_local! {
 
 const MAX_LIMIT: u32 = 200;
 const DEFAULT_LIMIT: u32 = 100;
+const TRIVIAL_SEARCHES: &[&str] = &["", "^", "$", "^$"];
 
 async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
     // redirect simple regex queries that match everything or nothing
     if let Some(domain) = &query.domain {
         let domain = domain.trim();
-        if domain == "" || domain == "^" || domain == "$" || domain == "^$" {
+        if TRIVIAL_SEARCHES.contains(&domain) {
             return res::redirect("/");
         }
     };

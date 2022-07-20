@@ -58,7 +58,7 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
             let domain = query
                 .domain
                 .clone()
-                .unwrap_or_else(|| "^".to_string())
+                .unwrap_or_else(|| "".to_string())
                 .html_escape();
             (
                 StatusCode::OK,

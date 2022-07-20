@@ -142,27 +142,24 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
         .get(0)
         .map(|dom| String::from_utf8_lossy(dom).to_string())
         .unwrap_or_else(String::new);
+    let typ = if full_cert {
+        "certificate"
+    } else {
+        "precertificate"
+    };
     (
         StatusCode::OK,
         res::html_headers(),
         format!(
             include_str!("tmpl/base.html"),
-            title = format_args!(
-                "{} {} - {}",
-                first_domain,
-                if full_cert {
-                    "certificate"
-                } else {
-                    "precertificate"
-                },
-                PRODUCT_NAME
-            ),
+            title = format_args!("{} {} - {}", first_domain, typ, PRODUCT_NAME),
             product_name = PRODUCT_NAME,
             heading = first_domain,
             content = format_args!(
                 include_str!("tmpl/cert_info.html"),
                 cert = cert,
                 id = leaf_hash,
+                typ = typ,
             ),
             css = concat!(
                 include_str!("tmpl/base.css"),

@@ -6,7 +6,7 @@ use belvi_frontend::search;
 fn main() {
     env_logger::init();
 
-    let db = belvi_frontend::db::connect();
+    let db = belvi_db::connect_readonly();
     let limit = 50;
     let query = search::Query {
         domain: std::env::args_os().nth(2).map(|s| s.into_string().unwrap()),

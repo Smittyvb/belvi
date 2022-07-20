@@ -178,6 +178,7 @@ dependencies = [
  "bcder",
  "belvi_cache",
  "belvi_cert",
+ "belvi_db",
  "belvi_hash",
  "belvi_log_list",
  "chrono",
@@ -194,6 +195,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "belvi_db"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "regex",
+ "rusqlite",
+]
+
+[[package]]
 name = "belvi_frontend"
 version = "0.1.0"
 dependencies = [
@@ -202,6 +212,7 @@ dependencies = [
  "bcder",
  "belvi_cache",
  "belvi_cert",
+ "belvi_db",
  "belvi_hash",
  "belvi_log_list",
  "belvi_render",
@@ -209,7 +220,6 @@ dependencies = [
  "env_logger",
  "hex",
  "log",
- "regex",
  "reqwest",
  "rusqlite",
  "serde",

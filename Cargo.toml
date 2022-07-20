@@ -8,6 +8,7 @@ members = [
     "belvi_frontend",
     "belvi_cache",
     "belvi_cert",
+    "belvi_db",
 ]
 
 [profile.release]

@@ -27,7 +27,7 @@ struct CacheState {
 
 // TODO: use put in global state
 thread_local! {
-    static DB_CONN: Connection = db::connect();
+    static DB_CONN: Connection = belvi_db::connect_readonly();
 }
 
 const MAX_LIMIT: u32 = 200;

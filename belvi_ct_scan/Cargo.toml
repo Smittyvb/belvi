@@ -9,6 +9,7 @@ belvi_log_list = { path = "../belvi_log_list" }
 belvi_hash = { path = "../belvi_hash" }
 belvi_cache = { path = "../belvi_cache" }
 belvi_cert = { path = "../belvi_cert" }
+belvi_db = { path = "../belvi_db" }
 
 tokio = { version = "1.16.1", features = ["full"] }
 serde_json = "1.0.78"

@@ -88,7 +88,6 @@ impl Ctx {
         let mut args = env::args_os();
         let data_path: PathBuf = args.nth(1).unwrap().into();
         let fetch_state_path = data_path.join("state.json");
-        let db_path = data_path.join("data.db");
         let certs_path = data_path.join("certs");
         if !certs_path.exists() {
             warn!("certs directory doesn't exist; creating");
@@ -97,11 +96,7 @@ impl Ctx {
         let start_time = Utc::now();
         debug!("Start time is {:?}", start_time);
         let cache_certs = env::var("BELVI_NO_CACHE").is_err();
-        let sqlite_conn = rusqlite::Connection::open(db_path).expect("couldn't open DB");
-        debug!("SQLite version is {}", rusqlite::version());
-        sqlite_conn
-            .execute_batch(include_str!("../../shared_sql/init_db.sql"))
-            .unwrap();
+        let sqlite_conn = belvi_db::connect();
         Ctx {
             data_path,
             fetch_state_path,

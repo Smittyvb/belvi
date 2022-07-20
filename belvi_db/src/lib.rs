@@ -20,7 +20,6 @@ pub fn connect_readonly() -> Connection {
 
 pub fn connect() -> Connection {
     let db_path = get_data_path().join("data.db");
-    // OPEN_CREATE isn't passed, so we don't create the DB if it doesn't exist
     let mut db = Connection::open(db_path).unwrap();
     exts::register(&mut db);
     debug!("SQLite version is {}", rusqlite::version());

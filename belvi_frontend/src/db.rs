@@ -2,7 +2,6 @@
 use rusqlite::{Connection, OpenFlags};
 use std::{env, path::PathBuf};
 
-// SPDX-License-Identifier: Apache-2.0
 fn get_data_path() -> PathBuf {
     let mut args = env::args_os();
     args.nth(1).unwrap().into()

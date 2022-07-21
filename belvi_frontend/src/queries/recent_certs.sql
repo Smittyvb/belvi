@@ -7,3 +7,4 @@ FROM (
     ORDER BY log_entries.ts DESC
 )
 LEFT JOIN domains ON log_entries_leaf_hash = domains.leaf_hash
+ORDER BY ts DESC

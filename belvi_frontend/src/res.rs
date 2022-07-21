@@ -3,7 +3,6 @@ use axum::{
     http::{HeaderMap, HeaderValue},
     response::{IntoResponse, Response},
 };
-use belvi_render::html_escape::HtmlEscapable;
 use reqwest::StatusCode;
 
 pub fn html_headers() -> HeaderMap {
@@ -18,20 +17,7 @@ pub fn html_headers() -> HeaderMap {
 pub fn error(e: Option<String>) -> Response {
     (
         StatusCode::UNPROCESSABLE_ENTITY,
-        html_headers(),
-        format!(
-            include_str!("tmpl/base.html"),
-            title = format_args!("Error - {}", super::PRODUCT_NAME),
-            product_name = super::PRODUCT_NAME,
-            heading = "Error",
-            content = format_args!(
-                include_str!("tmpl/error.html"),
-                e.unwrap_or_else(|| "Your request could not be processed at this time".to_string())
-                    .html_escape()
-            ),
-            css = include_str!("tmpl/base.css"),
-            script = "",
-        ),
+        e.unwrap_or_else(|| "Your request could not be processed at this time".to_string()),
     )
         .into_response()
 }

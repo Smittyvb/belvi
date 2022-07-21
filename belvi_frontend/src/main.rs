@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use axum::{
+    body::HttpBody,
     extract::{ConnectInfo, Path, Query},
     handler::Handler,
     http::{header, HeaderMap, HeaderValue, Request, StatusCode},
@@ -382,6 +383,37 @@ async fn log_middleware<B>(req: Request<B>, next: Next<B>) -> Response {
     next.run(req).await
 }
 
+async fn handle_422_middleware<B>(req: Request<B>, next: Next<B>) -> Response {
+    let mut res = next.run(req).await;
+    if res.status() == StatusCode::UNPROCESSABLE_ENTITY {
+        let error = res.data().await.map(|bytes| bytes.ok()).flatten();
+        (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            res::html_headers(),
+            format!(
+                include_str!("tmpl/base.html"),
+                title = format_args!("Error - {}", PRODUCT_NAME),
+                product_name = PRODUCT_NAME,
+                heading = "Error",
+                content = format_args!(
+                    include_str!("tmpl/error.html"),
+                    error
+                        .map(|b| String::from_utf8_lossy(&*b).into_owned())
+                        .unwrap_or_else(
+                            || "Your request could not be processed at this time".to_string()
+                        )
+                        .html_escape()
+                ),
+                css = include_str!("tmpl/base.css"),
+                script = "",
+            ),
+        )
+            .into_response()
+    } else {
+        res
+    }
+}
+
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() {
     env_logger::init();
@@ -398,6 +430,7 @@ async fn main() {
         .route("/docs/:page", get(get_page))
         .fallback(global_404.into_service())
         .layer(middleware::from_fn(log_middleware))
+        .layer(middleware::from_fn(handle_422_middleware))
         .layer(Extension(cache_state))
         .layer(SetResponseHeaderLayer::if_not_present(
             header::SERVER,

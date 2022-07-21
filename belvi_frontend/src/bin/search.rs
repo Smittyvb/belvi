@@ -1,7 +1,7 @@
-use std::time::Instant;
+use std::{ffi::OsString, time::Instant};
 
 // SPDX-License-Identifier: Apache-2.0
-use belvi_frontend::search;
+use belvi_frontend::search::{self, QueryMode};
 
 fn main() {
     env_logger::init();
@@ -10,6 +10,12 @@ fn main() {
     let limit = 50;
     let query = search::Query {
         query: std::env::args_os().nth(2).map(|s| s.into_string().unwrap()),
+        mode: match std::env::args_os().nth(3) {
+            None => None,
+            Some(x) if x == OsString::from("regex") => Some(QueryMode::Regex),
+            Some(x) if x == OsString::from("subdomain") => Some(QueryMode::Subdomain),
+            Some(_) => panic!("invalid mode"),
+        },
         limit: Some(limit),
     };
 

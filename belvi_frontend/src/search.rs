@@ -21,9 +21,17 @@ fn format_date(date: DateTime<Utc>) -> String {
     date.format("%k:%M, %e %b %Y").html_escape()
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMode {
+    Regex,
+    Subdomain,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Query {
     pub query: Option<String>,
+    pub mode: Option<QueryMode>,
     pub limit: Option<u32>,
 }
 

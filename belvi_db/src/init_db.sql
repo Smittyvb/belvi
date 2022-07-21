@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: Apache-2.0
--- Run every time the SQLite database is loaded.
+-- Run every time the SQLite database is loaded for writing.
 
 -- CONFIGURE SQLITE --
 PRAGMA journal_mode = WAL;

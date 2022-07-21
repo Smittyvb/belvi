@@ -12,7 +12,7 @@ fn configure_regex(b: &mut RegexBuilder) {
         .nest_limit(18);
 }
 
-fn domrev(dom: &[u8]) -> Vec<u8> {
+pub fn domrev(dom: &[u8]) -> Vec<u8> {
     if dom.contains(&b'@') {
         // looks like an email, don't modify
         return dom.to_vec();
@@ -67,6 +67,8 @@ pub fn register(db: &mut Connection) {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rusqlite::{types::FromSql, ToSql};
+    use std::fmt;
 
     #[test]
     fn regex() {
@@ -116,9 +118,13 @@ mod test {
         let mut db = Connection::open_in_memory().unwrap();
         register(&mut db);
 
-        fn t(db: &mut Connection, query: &str, result: &[u8]) {
+        fn t<T: PartialEq + fmt::Debug + ToSql + FromSql>(
+            db: &mut Connection,
+            query: &str,
+            result: &T,
+        ) {
             println!("Trying {}", query);
-            let val: Vec<u8> = db
+            let val: T = db
                 .prepare(&format!("SELECT {}", query))
                 .unwrap()
                 .query([])
@@ -128,7 +134,7 @@ mod test {
                 .unwrap()
                 .get(0)
                 .unwrap();
-            assert_eq!(val, result);
+            assert_eq!(val, *result);
         }
 
         t(&mut db, "domrev('abc')", b"abc");
@@ -139,5 +145,6 @@ mod test {
         t(&mut db, "domrev('.')", b".");
         t(&mut db, "domrev('.a.')", b".a.");
         t(&mut db, "domrev('abc@example.com')", b"abc@example.com");
+        t(&mut db, "domrev('abc.com') >= '.com'", &true);
     }
 }

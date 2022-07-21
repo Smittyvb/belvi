@@ -23,7 +23,7 @@ fn format_date(date: DateTime<Utc>) -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct Query {
-    pub domain: Option<String>,
+    pub query: Option<String>,
     pub limit: Option<u32>,
 }
 
@@ -75,8 +75,8 @@ impl Query {
             .prepare_cached(include_str!("queries/recent_certs_regex.sql"))
             .unwrap();
         let mut certs_count_stmt = db.prepare_cached("SELECT COUNT(*) FROM certs").unwrap();
-        let (mut certs_rows, count) = if let Some(domain) = &self.domain {
-            (certs_regex_stmt.query([domain]).unwrap(), None)
+        let (mut certs_rows, count) = if let Some(query) = &self.query {
+            (certs_regex_stmt.query([query]).unwrap(), None)
         } else {
             (
                 certs_stmt.query([]).unwrap(),

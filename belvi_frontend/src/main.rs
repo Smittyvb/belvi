@@ -36,7 +36,7 @@ const TRIVIAL_SEARCHES: &[&str] = &["", "^", "$", "^$"];
 
 async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
     // redirect simple regex queries that match everything or nothing
-    if let Some(domain) = &query.domain {
+    if let Some(domain) = &query.query {
         let domain = domain.trim();
         if TRIVIAL_SEARCHES.contains(&domain) {
             return res::redirect("/");
@@ -57,7 +57,7 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
             };
             let run_time = (Instant::now() - start).as_secs_f64();
             let domain = query
-                .domain
+                .query
                 .clone()
                 .unwrap_or_else(|| "".to_string())
                 .html_escape();
@@ -66,13 +66,13 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
                 res::html_headers(),
                 format!(
                     include_str!("tmpl/base.html"),
-                    title = if query.domain.is_some() {
+                    title = if query.query.is_some() {
                         format!("Search results - {}", PRODUCT_NAME)
                     } else {
                         PRODUCT_NAME.to_string()
                     },
                     product_name = PRODUCT_NAME,
-                    heading = if query.domain.is_some() {
+                    heading = if query.query.is_some() {
                         "Search results"
                     } else {
                         "Newest certificates"

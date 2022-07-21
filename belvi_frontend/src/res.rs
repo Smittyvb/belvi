@@ -17,7 +17,7 @@ pub fn html_headers() -> HeaderMap {
 
 pub fn error(e: Option<String>) -> Response {
     (
-        StatusCode::BAD_REQUEST,
+        StatusCode::UNPROCESSABLE_ENTITY,
         html_headers(),
         format!(
             include_str!("tmpl/base.html"),

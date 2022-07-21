@@ -26,3 +26,10 @@ pub fn connect() -> Connection {
     db.execute_batch(include_str!("init_db.sql")).unwrap();
     db
 }
+
+pub fn memory() -> Connection {
+    let mut db = Connection::open_in_memory().unwrap();
+    db.execute_batch(include_str!("init_db.sql")).unwrap();
+    exts::register(&mut db);
+    db
+}

@@ -4,6 +4,7 @@ use rusqlite::{Connection, OpenFlags};
 use std::{env, path::PathBuf};
 
 mod exts;
+pub use exts::domrev;
 
 fn get_data_path() -> PathBuf {
     let mut args = env::args_os();
@@ -29,7 +30,7 @@ pub fn connect() -> Connection {
 
 pub fn memory() -> Connection {
     let mut db = Connection::open_in_memory().unwrap();
-    db.execute_batch(include_str!("init_db.sql")).unwrap();
     exts::register(&mut db);
+    db.execute_batch(include_str!("init_db.sql")).unwrap();
     db
 }

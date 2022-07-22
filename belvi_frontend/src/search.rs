@@ -82,9 +82,32 @@ impl Query {
         let mut certs_regex_stmt = db
             .prepare_cached(include_str!("queries/recent_certs_regex.sql"))
             .unwrap();
+        let mut cert_sub_stmt = db
+            .prepare_cached(include_str!("queries/recent_certs_sub.sql"))
+            .unwrap();
         let mut certs_count_stmt = db.prepare_cached("SELECT COUNT(*) FROM certs").unwrap();
+        let mode = self.mode.unwrap_or(QueryMode::Regex);
         let (mut certs_rows, count) = if let Some(query) = &self.query {
-            (certs_regex_stmt.query([query]).unwrap(), None)
+            (
+                match mode {
+                    QueryMode::Regex => certs_regex_stmt.query([query]).unwrap(),
+                    QueryMode::Subdomain => cert_sub_stmt
+                        .query([
+                            [
+                                belvi_db::domrev(query.to_ascii_lowercase().as_bytes()),
+                                vec![b'.'],
+                            ]
+                            .concat(),
+                            [
+                                belvi_db::domrev(query.to_ascii_lowercase().as_bytes()),
+                                vec![b'/'],
+                            ]
+                            .concat(),
+                        ])
+                        .unwrap(),
+                },
+                None,
+            )
         } else {
             (
                 certs_stmt.query([]).unwrap(),

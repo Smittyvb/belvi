@@ -21,14 +21,15 @@ fn format_date(date: DateTime<Utc>) -> String {
     date.format("%k:%M, %e %b %Y").html_escape()
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMode {
     Regex,
     Subdomain,
+    Recent,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Query {
     pub query: Option<String>,
     pub mode: Option<QueryMode>,
@@ -86,37 +87,49 @@ impl Query {
             .prepare_cached(include_str!("queries/recent_certs_sub.sql"))
             .unwrap();
         let mut certs_count_stmt = db.prepare_cached("SELECT COUNT(*) FROM certs").unwrap();
-        let mode = self.mode.unwrap_or(QueryMode::Regex);
-        let (mut certs_rows, count) = if let Some(query) = &self.query {
-            (
-                match mode {
-                    QueryMode::Regex => certs_regex_stmt.query([query]).unwrap(),
-                    QueryMode::Subdomain => cert_sub_stmt
-                        .query([
-                            [
-                                belvi_db::domrev(query.to_ascii_lowercase().as_bytes()),
-                                vec![b'.'],
-                            ]
-                            .concat(),
-                            [
-                                belvi_db::domrev(query.to_ascii_lowercase().as_bytes()),
-                                vec![b'/'],
-                            ]
-                            .concat(),
-                        ])
-                        .unwrap(),
-                },
+        let mode = self.mode.unwrap_or(QueryMode::Recent);
+        let (mut certs_rows, count) = match (&self.query, mode) {
+            (Some(query), QueryMode::Regex) => (certs_regex_stmt.query([query]).unwrap(), None),
+            (Some(query), QueryMode::Subdomain) => (
+                cert_sub_stmt
+                    .query([
+                        [
+                            belvi_db::domrev(query.to_ascii_lowercase().as_bytes()),
+                            vec![b'.'],
+                        ]
+                        .concat(),
+                        [
+                            belvi_db::domrev(query.to_ascii_lowercase().as_bytes()),
+                            vec![b'/'],
+                        ]
+                        .concat(),
+                    ])
+                    .unwrap(),
                 None,
-            )
-        } else {
-            (
+            ),
+            (None, QueryMode::Recent) => (
                 certs_stmt.query([]).unwrap(),
                 Some(
                     certs_count_stmt
                         .query_row([], |row| row.get::<_, usize>(0))
                         .unwrap(),
                 ),
-            )
+            ),
+            // query provided but is not needed
+            (Some(_), QueryMode::Recent) => {
+                return Err(res::redirect(&format!("/{}", {
+                    let mut query = (*self).clone();
+                    query.query = None;
+                    let qstr = serde_urlencoded::ser::to_string(query).unwrap();
+                    if qstr.is_empty() {
+                        String::new()
+                    } else {
+                        format!("?{}", qstr)
+                    }
+                })))
+            }
+            // no query provided
+            (None, _) => return Err(res::redirect("/")),
         };
 
         let mut certs = Vec::new();

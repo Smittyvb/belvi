@@ -4,4 +4,4 @@ FROM domains
 LEFT JOIN log_entries ON log_entries.leaf_hash = domains.leaf_hash
 LEFT JOIN certs ON log_entries.leaf_hash = certs.leaf_hash
 WHERE domrev(lower(domains.domain)) >= ? AND domrev(lower(domains.domain)) < ?
-ORDER BY domains.domain
+ORDER BY domrev(lower(domains.domain))

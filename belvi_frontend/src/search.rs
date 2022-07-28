@@ -79,6 +79,15 @@ pub struct SearchResults {
 }
 
 impl Query {
+    fn url(&self) -> String {
+        let qstr = serde_urlencoded::ser::to_string(self).unwrap();
+        if qstr.is_empty() {
+            String::new()
+        } else {
+            format!("/?{}", qstr)
+        }
+    }
+
     pub fn search_sync(&self, db: &Connection, limit: u32) -> Result<SearchResults, Response> {
         let mut certs_stmt = db
             .prepare_cached(include_str!("queries/recent_certs.sql"))
@@ -137,16 +146,9 @@ impl Query {
             ),
             // query provided but is not needed
             (Some(_), QueryMode::Recent) => {
-                return Err(res::redirect(&format!("/{}", {
-                    let mut query = (*self).clone();
-                    query.query = None;
-                    let qstr = serde_urlencoded::ser::to_string(query).unwrap();
-                    if qstr.is_empty() {
-                        String::new()
-                    } else {
-                        format!("?{}", qstr)
-                    }
-                })))
+                let mut query = (*self).clone();
+                query.query = None;
+                return Err(res::redirect(&query.url()));
             }
             // no query provided
             (None, _) => return Err(res::redirect("/")),

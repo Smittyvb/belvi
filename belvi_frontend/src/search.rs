@@ -163,8 +163,8 @@ impl Query {
                 Err(rusqlite::Error::SqliteFailure(_, err)) => return Err(res::error(err)),
                 Err(e) => panic!("unexpected error fetching certs {:#?}", e),
             };
-            let rowid: usize = val.get(7).unwrap();
             if let Some((min_rowid, _)) = after {
+                let rowid: usize = val.get(7).unwrap();
                 if min_rowid == rowid {
                     // multiple domains with same name, skip earlier ones
                     certs = Vec::new();

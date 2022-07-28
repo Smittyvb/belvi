@@ -52,7 +52,7 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
     task::spawn_blocking(move || {
         DB_CONN.with(|db| {
             let start = Instant::now();
-            let (certs, count) = match query.search_sync(&db, limit) {
+            let search::SearchResults { certs, count, next } = match query.search_sync(db, limit) {
                 Ok(v) => v,
                 Err(resp) => return resp,
             };
@@ -104,6 +104,7 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
                                 .map(search::CertData::render)
                                 .fold(String::new(), |a, b| a + &b),
                             time = run_time,
+                            next = next.map(|s| s.html_escape()).unwrap_or_default(),
                         )
                     },
                     css = include_str!("tmpl/base.css"),

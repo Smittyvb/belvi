@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::cmp::Ordering;
-
 use crate::res;
 use axum::response::Response;
 use belvi_render::html_escape::HtmlEscapable;
 use chrono::{DateTime, NaiveDateTime, Utc};
+use log::trace;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 
-fn render_domain(s: String) -> String {
+fn render_domain(s: &str) -> String {
     format!(
         r#"<div class="bvfront-domain">{}</div>"#,
         s.html_escape()
@@ -32,6 +32,7 @@ pub enum QueryMode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Query {
     pub query: Option<String>,
+    pub after: Option<String>,
     pub mode: Option<QueryMode>,
     pub limit: Option<u32>,
 }
@@ -71,12 +72,14 @@ impl CertData {
     }
 }
 
+pub struct SearchResults {
+    pub certs: Vec<CertData>,
+    pub count: Option<usize>,
+    pub next: Option<String>,
+}
+
 impl Query {
-    pub fn search_sync(
-        &self,
-        db: &Connection,
-        limit: u32,
-    ) -> Result<(Vec<CertData>, Option<usize>), Response> {
+    pub fn search_sync(&self, db: &Connection, limit: u32) -> Result<SearchResults, Response> {
         let mut certs_stmt = db
             .prepare_cached(include_str!("queries/recent_certs.sql"))
             .unwrap();
@@ -88,14 +91,31 @@ impl Query {
             .unwrap();
         let mut certs_count_stmt = db.prepare_cached("SELECT COUNT(*) FROM certs").unwrap();
         let mode = self.mode.unwrap_or(QueryMode::Recent);
+        let after = self.after.clone().and_then(|after| {
+            let (p1, p2) = after.split_once(':')?;
+            Some((p1.parse::<usize>().ok()?, p2.to_string()))
+        });
+        trace!("after = {:?}", after);
         let (mut certs_rows, count) = match (&self.query, mode) {
             (Some(query), QueryMode::Regex) => (certs_regex_stmt.query([query]).unwrap(), None),
             (Some(query), QueryMode::Subdomain) => (
                 cert_sub_stmt
                     .query([
                         [
-                            belvi_db::domrev(query.to_ascii_lowercase().as_bytes()),
-                            vec![b'.'],
+                            belvi_db::domrev(
+                                (if let Some((_, ref dom)) = after {
+                                    dom
+                                } else {
+                                    query
+                                })
+                                .to_ascii_lowercase()
+                                .as_bytes(),
+                            ),
+                            if after.is_some() {
+                                Vec::new()
+                            } else {
+                                vec![b'.']
+                            },
                         ]
                         .concat(),
                         [
@@ -133,6 +153,7 @@ impl Query {
         };
 
         let mut certs = Vec::new();
+        let mut next = None;
         loop {
             let val = match certs_rows.next() {
                 Ok(Some(val)) => val,
@@ -140,10 +161,20 @@ impl Query {
                 Err(rusqlite::Error::SqliteFailure(_, err)) => return Err(res::error(err)),
                 Err(e) => panic!("unexpected error fetching certs {:#?}", e),
             };
-            let domain = match val.get(3) {
-                Ok(domain) => render_domain(domain),
+            let rowid: usize = val.get(7).unwrap();
+            if let Some((min_rowid, _)) = after {
+                if min_rowid == rowid {
+                    // multiple domains with same name, skip earlier ones
+                    certs = Vec::new();
+                }
+            };
+            let (domain, domain_rendered) = match val.get::<_, String>(3) {
+                Ok(domain) => {
+                    let rendered = render_domain(&domain);
+                    (Some(domain), rendered)
+                }
                 Err(rusqlite::Error::InvalidColumnType(_, _, rusqlite::types::Type::Null)) => {
-                    "(none)".to_string()
+                    (None, "(none)".to_string())
                 }
                 other => panic!("unexpected domain fetching error {:?}", other),
             };
@@ -153,19 +184,28 @@ impl Query {
                 .map(|last: &CertData| last.leaf_hash == leaf_hash)
             {
                 // extension of last
-                certs.last_mut().unwrap().domain.push(domain);
+                certs.last_mut().unwrap().domain.push(domain_rendered);
             } else {
                 match certs.len().cmp(&(limit as usize)) {
                     Ordering::Less => {}
                     // stop requesting rows once we get enough
-                    Ordering::Equal => break,
+                    Ordering::Equal => {
+                        if mode == QueryMode::Subdomain {
+                            next = Some(format!(
+                                "{}:{}",
+                                val.get::<_, usize>(7).unwrap(),
+                                domain.unwrap_or_else(String::new),
+                            ));
+                        }
+                        break;
+                    }
                     Ordering::Greater => unreachable!(),
                 }
                 certs.push(CertData {
                     leaf_hash,
                     log_id: val.get(1).unwrap(),
                     ts: val.get(2).unwrap(),
-                    domain: vec![domain],
+                    domain: vec![domain_rendered],
                     extra_hash: val.get(4).unwrap(),
                     not_before: val.get(5).unwrap(),
                     not_after: val.get(6).unwrap(),
@@ -176,6 +216,6 @@ impl Query {
             // so when displayed they are longest to shortest
             crate::domain_sort::sort(&mut cert.domain);
         }
-        Ok((certs, count))
+        Ok(SearchResults { certs, count, next })
     }
 }

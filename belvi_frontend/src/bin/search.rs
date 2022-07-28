@@ -1,7 +1,6 @@
-use std::{ffi::OsString, time::Instant};
-
 // SPDX-License-Identifier: Apache-2.0
-use belvi_frontend::search::{self, QueryMode};
+use belvi_frontend::search::{self, QueryMode, SearchResults};
+use std::{ffi::OsString, time::Instant};
 
 fn main() {
     env_logger::init();
@@ -17,10 +16,15 @@ fn main() {
             Some(_) => panic!("invalid mode"),
         },
         limit: Some(limit),
+        after: None,
     };
 
     let start = Instant::now();
-    let (certs, count) = match query.search_sync(&db, limit) {
+    let SearchResults {
+        certs,
+        count,
+        next: _,
+    } = match query.search_sync(&db, limit) {
         Ok(v) => v,
         Err(res) => panic!("failed: {:?}", res.body()),
     };

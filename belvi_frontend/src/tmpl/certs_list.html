@@ -4,11 +4,14 @@
     <input type="hidden" name="mode" value="regex">
 </form>
 <div class="bvfront-count">Showing {count} certificates{total}</div>
+{next}
 <table class="bvfront-cert-list">
-    {next}
     <thead>
         <tr><th>Logged at</th><th class="bvfront-header-domains">Domains</th><th>Not before</th><th>Expiration</th></tr>
     </thead>
-    <tbody>{certs}</tbody>
+    <tbody>
+        {certs}
+    </tbody>
 </table>
+{next}
 <div class="bvfront-search-time">Searched in {time} seconds.</div>

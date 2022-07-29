@@ -104,7 +104,14 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
                                 .map(search::CertData::render)
                                 .fold(String::new(), |a, b| a + &b),
                             time = run_time,
-                            next = next.map(|s| s.html_escape()).unwrap_or_default(),
+                            next = next.clone().map(|next| {
+                                let mut query = (*query).clone();
+                                query.after = Some(next);
+                                format!(
+                                    r#"<div class="bvfront-next-link"><a href="{}">Next page</a></div>"#,
+                                    query.url(),
+                                )
+                            }).unwrap_or_default(),
                         )
                     },
                     css = include_str!("tmpl/base.css"),

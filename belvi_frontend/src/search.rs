@@ -79,7 +79,7 @@ pub struct SearchResults {
 }
 
 impl Query {
-    fn url(&self) -> String {
+    pub fn url(&self) -> String {
         let qstr = serde_urlencoded::ser::to_string(self).unwrap();
         if qstr.is_empty() {
             String::new()

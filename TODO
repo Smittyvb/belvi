@@ -1,5 +1,7 @@
 - UI for subdomain search
 - indicate sort order
 - optimize prefixed regex
+- indicate sort order
+- UI for back/forth in results
 
 - indicate what logs contain a cert

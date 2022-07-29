@@ -78,6 +78,7 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
                     } else {
                         "Newest certificates"
                     },
+                    heading_classes = "",
                     content = if certs.is_empty() {
                         format!(
                             include_str!("tmpl/no_results.html"),
@@ -205,6 +206,7 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str, in_logs: Vec<(u32, usize)>) ->
                 typ = typ,
                 logs = log_info,
             ),
+            heading_classes = "bvfront-domain-heading",
             css = concat!(
                 include_str!("tmpl/base.css"),
                 include_str!("../../belvi_render/bvcert.css")
@@ -409,6 +411,7 @@ async fn get_page(Path(page): Path<String>) -> impl IntoResponse {
             title = format_args!("{} - {}", title, PRODUCT_NAME),
             product_name = PRODUCT_NAME,
             heading = title,
+            heading_classes = "",
             content = format_args!(r#"<div class="bvfront-page-content">{}</div>"#, body),
             css = include_str!("tmpl/base.css"),
             script = ""
@@ -447,6 +450,7 @@ async fn handle_422_middleware<B>(req: Request<B>, next: Next<B>) -> Response {
                 title = format_args!("Error - {}", PRODUCT_NAME),
                 product_name = PRODUCT_NAME,
                 heading = "Error",
+                heading_classes = "",
                 content = format_args!(
                     include_str!("tmpl/error.html"),
                     error

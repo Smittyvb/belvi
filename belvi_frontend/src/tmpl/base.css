@@ -22,6 +22,10 @@ h1 {
     line-height: 1;
 }
 
+.bvfront-domain-heading {
+    overflow-wrap: anywhere;
+}
+
 .bvfront-page-content {
     max-width: 50rem;
 }

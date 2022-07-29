@@ -37,6 +37,7 @@ pub fn not_found(thing: &'static str) -> Response {
             title = format_args!("Not found - {}", super::PRODUCT_NAME),
             product_name = super::PRODUCT_NAME,
             heading = "Not found",
+            heading_classes = "",
             content = format_args!("{} not found.", thing),
             css = include_str!("tmpl/base.css"),
             script = ""

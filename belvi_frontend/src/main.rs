@@ -125,7 +125,11 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
     .unwrap()
 }
 
-fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
+lazy_static::lazy_static! {
+    static ref LOG_LIST: LogList = LogList::google();
+}
+
+fn cert_response(cert: &Vec<u8>, leaf_hash: &str, in_logs: Vec<(u32, usize)>) -> Response {
     // first try decoding as precert, then try normal cert
     let (cert, domains, full_cert) =
         match Constructed::decode(cert.as_ref(), bcder::Mode::Der, |cons| {
@@ -148,6 +152,7 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
                 )
             }
         };
+
     let first_domain = domains
         .get(0)
         .map(|dom| String::from_utf8_lossy(dom).to_string())
@@ -157,6 +162,34 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
     } else {
         "precertificate"
     };
+
+    let log_iter = LOG_LIST.logs();
+    let log_info = in_logs
+        .into_iter()
+        .map(|(log_id, idx)| {
+            let log = log_iter
+                .clone()
+                .find(|list_log| LogId(list_log.log_id.clone()).num() == log_id);
+            let log_name = log
+                .map(|log| log.description.html_escape())
+                .unwrap_or_else(|| "unknown".to_string());
+            format!(
+                r#"<li><a href="/logs/{}">{}</a> at {}</li>"#,
+                log_id,
+                log_name,
+                if let Some(log) = log {
+                    format!(
+                        r#"<a href="{}">#{}</a>"#,
+                        log.get_entries_url(idx as u64, idx as u64),
+                        idx
+                    )
+                } else {
+                    format!("#{}", idx)
+                }
+            )
+        })
+        .fold(String::new(), |a, b| a + &b);
+
     (
         StatusCode::OK,
         res::html_headers(),
@@ -170,6 +203,7 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
                 cert = cert,
                 id = leaf_hash,
                 typ = typ,
+                logs = log_info,
             ),
             css = concat!(
                 include_str!("tmpl/base.css"),
@@ -181,7 +215,13 @@ fn cert_response(cert: &Vec<u8>, leaf_hash: &str) -> Response {
         .into_response()
 }
 
-async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec<u8>, Response> {
+#[derive(Debug)]
+struct FoundCert {
+    cert: Vec<u8>,
+    in_logs: Vec<(u32, usize)>,
+}
+
+async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<FoundCert, Response> {
     if leaf_hash.len() != 32 {
         return Err(res::error(Some(
             "Cert ID is not 32 characters long".to_string(),
@@ -191,80 +231,84 @@ async fn find_cert(state: Arc<Mutex<CacheState>>, leaf_hash: &str) -> Result<Vec
         Ok(val) => val,
         Err(_) => return Err(res::error(Some("Cert ID must be hex".to_string()))),
     };
+    let in_logs = DB_CONN.with(|db| {
+        // TODO: don't block executor
+        let mut query = db
+            .prepare_cached("SELECT log_id, idx FROM log_entries WHERE leaf_hash = ?")
+            .unwrap();
+        let mut rows = query.query([leaf_hash.clone()]).unwrap();
+        let mut logs: Vec<(u32, usize)> = Vec::new();
+        loop {
+            let val = match rows.next() {
+                Ok(Some(val)) => val,
+                Ok(None) => break,
+                Err(e) => panic!("unexpected error fetching certs {:#?}", e),
+            };
+            logs.push((val.get(0).unwrap(), val.get(1).unwrap()));
+        }
+        logs
+    });
+    if in_logs.is_empty() {
+        return Err(res::not_found("Certificate"));
+    }
+
     let maybe_cert = { state.lock().await.cache_conn.get_cert(&leaf_hash).await };
     match maybe_cert {
-        Some(cert) => Ok(cert),
+        Some(cert) => Ok(FoundCert { cert, in_logs }),
         None => {
-            let wanted_logs = DB_CONN.with(|db| {
-                let mut query = db
-                    .prepare_cached("SELECT log_id, idx FROM log_entries WHERE leaf_hash = ?")
-                    .unwrap();
-                let mut rows = query.query([leaf_hash]).unwrap();
-                let mut logs: Vec<(u32, usize)> = Vec::new();
-                loop {
-                    let val = match rows.next() {
-                        Ok(Some(val)) => val,
-                        Ok(None) => break,
-                        Err(e) => panic!("unexpected error fetching certs {:#?}", e),
-                    };
-                    logs.push((val.get(0).unwrap(), val.get(1).unwrap()));
+            let mut state = state.lock().await;
+            let mut matching_logs = state
+                .log_list
+                .logs()
+                .filter(|list_log| list_log.readable())
+                .filter_map(|list_log| {
+                    let wanted_id = LogId(list_log.log_id.clone()).num();
+                    in_logs
+                        .iter()
+                        .find(|wanted_log| wanted_id == wanted_log.0)
+                        .map(|v| (list_log, v.1))
+                });
+            let (log, idx) = match matching_logs.next() {
+                Some(val) => val,
+                None => {
+                    return Err(res::error(Some(
+                        "Found no current logs with cert".to_string(),
+                    )))
                 }
-                logs
-            });
-            if wanted_logs.is_empty() {
-                Err(res::not_found("Certificate"))
-            } else {
-                let mut state = state.lock().await;
-                let mut matching_logs = state
-                    .log_list
-                    .logs()
-                    .filter(|list_log| list_log.readable())
-                    .filter_map(|list_log| {
-                        let wanted_id = LogId(list_log.log_id.clone()).num();
-                        wanted_logs
-                            .iter()
-                            .find(|wanted_log| wanted_id == wanted_log.0)
-                            .map(|v| (list_log, v.1))
-                    });
-                let (log, idx) = match matching_logs.next() {
-                    Some(val) => val,
-                    None => {
-                        return Err(res::error(Some(
-                            "Found no current logs with cert".to_string(),
-                        )))
-                    }
-                };
-                let entries = state
-                    .fetcher
-                    .fetch_entries(log, idx as u64, idx as u64)
-                    .await;
-                let entries = match entries {
-                    Ok(val) => val,
-                    Err(err) => {
-                        return Err(res::error(Some(format!(
-                            "Error fetching cert from log: {:#?}",
-                            err
-                        ))))
-                    }
-                };
-                match entries.len() {
-                    1 => (),
-                    0 => return Err(res::error(Some("Log found no cert at index".to_string()))),
-                    _ => {
-                        return Err(res::error(Some(
-                            "Log responded with more certs than requested".to_string(),
-                        )))
-                    }
-                };
-                let cert = entries[0]
-                    .leaf_input
-                    .timestamped_entry
-                    .log_entry
-                    .inner_cert();
-                drop(matching_logs);
-                state.cache_conn.new_cert(&belvi_hash::db(cert), cert);
-                Ok(cert.clone())
-            }
+            };
+            let entries = state
+                .fetcher
+                .fetch_entries(log, idx as u64, idx as u64)
+                .await;
+            let entries = match entries {
+                Ok(val) => val,
+                Err(err) => {
+                    return Err(res::error(Some(format!(
+                        "Error fetching cert from log: {:#?}",
+                        err
+                    ))))
+                }
+            };
+            match entries.len() {
+                1 => (),
+                0 => return Err(res::error(Some("Log found no cert at index".to_string()))),
+                _ => {
+                    return Err(res::error(Some(
+                        "Log responded with more certs than requested".to_string(),
+                    )))
+                }
+            };
+            let cert = entries[0]
+                .leaf_input
+                .timestamped_entry
+                .log_entry
+                .inner_cert();
+            drop(matching_logs);
+            state.cache_conn.new_cert(&belvi_hash::db(cert), cert);
+            Ok(FoundCert {
+                cert: cert.clone(),
+                in_logs,
+            })
         }
     }
 }
@@ -295,8 +339,8 @@ async fn get_cert(
     };
 
     match find_cert(state, leaf_hash).await {
-        Ok(cert) => match ext {
-            OutputMode::Html => cert_response(&cert, leaf_hash),
+        Ok(FoundCert { cert, in_logs }) => match ext {
+            OutputMode::Html => cert_response(&cert, leaf_hash, in_logs),
             OutputMode::Der => (
                 StatusCode::OK,
                 {

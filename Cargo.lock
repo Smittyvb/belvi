@@ -219,6 +219,7 @@ dependencies = [
  "chrono",
  "env_logger",
  "hex",
+ "lazy_static",
  "log",
  "reqwest",
  "rusqlite",

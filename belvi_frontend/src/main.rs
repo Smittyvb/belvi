@@ -127,6 +127,7 @@ async fn get_root(query: Query<search::Query>) -> impl IntoResponse {
 }
 
 lazy_static::lazy_static! {
+    // TODO: don't duplicate CacheState
     static ref LOG_LIST: LogList = LogList::google();
 }
 
